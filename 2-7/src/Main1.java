@@ -4,6 +4,6 @@ public class Main1 {
         int tea = 160;
         int rice = 130;
         int total = lunch + tea + rice;
-        System.out.println("合計金額は" + total + "です。");
+        System.out.println("合計金額は" + total + "円です。");
     }
 }

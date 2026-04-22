@@ -7,6 +7,7 @@ public class Main6 {
         int exp = Integer.parseInt(input);
         int bonusExp = (int)(exp * 1.25);
         System.out.println("ボーナス後の経験値：" + bonusExp);
+        scanner.close();
         
     }
 }

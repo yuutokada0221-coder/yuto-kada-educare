@@ -11,5 +11,6 @@ public class Main8 {
         int criticalDamage = (int)(damage * 1.5);
         System.out.println("通常ダメージ：" + damage);
         System.out.println("クリティカルダメージ：" + criticalDamage);
+        scanner.close();
     }
 }
