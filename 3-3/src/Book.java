@@ -2,7 +2,7 @@ public class Book {
     String title;
     boolean isLent;
 
-    public void setTitle(String title){
+    public void getTitle(String title){
         this.title = title;
         System.out.println("「" + this.title + "」を登録しました");
     }
@@ -19,6 +19,8 @@ public class Book {
         if (this.isLent == true){
             this.isLent = false;
             System.out.println("本が返却されました");
+        }else{
+            System.out.println("この本は貸出中ではありません");
         }
     }
 }

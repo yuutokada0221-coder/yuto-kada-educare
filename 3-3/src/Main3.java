@@ -6,10 +6,10 @@ public class Main3 {
         sm.deposit(10000);
         System.out.println("残高：" + sm.getBalance() +"円");
 
-        sm.withdrow(3000);
+        sm.withdraw(3000);
         System.out.println("残高：" + sm.getBalance() +"円");
 
-        sm.withdrow(8000);
+        sm.withdraw(8000);
 
 
 

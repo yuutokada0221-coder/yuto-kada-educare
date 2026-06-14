@@ -1,7 +1,7 @@
 public class Main2 {
     public static void main(String[] args) {
         Book sm = new Book();
-        sm.setTitle ("Java入門");
+        sm.getTitle ("Java入門");
         
         sm.lend();
         sm.lend();

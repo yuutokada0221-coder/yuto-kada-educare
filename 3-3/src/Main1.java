@@ -7,6 +7,7 @@ public class Main1 {
       System.out.println("初期体力：" + sm.energy);
       sm.eat();
       sm.play();
+      sm.showEnergy();
 
     }
     

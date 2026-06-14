@@ -8,7 +8,7 @@ public class BankAccount {
         balance += amount;
         System.out.println(amount + "円預けました");
     }
-    public void withdrow(int amount){
+    public void withdraw(int amount){
         if(balance >= amount){
            balance -= amount;
            System.out.println(amount + "円引き出しました");
