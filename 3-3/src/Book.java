@@ -2,11 +2,13 @@ public class Book {
     String title;
     boolean isLent;
 
-    public void getTitle(String title){
+    public void setTitle(String title){
         this.title = title;
         System.out.println("「" + this.title + "」を登録しました");
     }
-
+    public String getTitle() {
+        return this.title;
+    }    
     public void lend(){
         if (this.isLent == true){
             System.out.println("申し訳ありません。この本は貸出中です");
