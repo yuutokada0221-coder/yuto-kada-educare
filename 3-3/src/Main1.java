@@ -6,6 +6,7 @@ public class Main1 {
       System.out.println(sm.name + "を生み出しました！");
       System.out.println("初期体力：" + sm.energy);
       sm.eat();
+      sm.showEnergy();
       sm.play();
       sm.showEnergy();
 
