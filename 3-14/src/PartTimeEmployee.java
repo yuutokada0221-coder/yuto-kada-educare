@@ -1,6 +1,6 @@
 public class PartTimeEmployee extends Employee {
-    int hourlyWage;
-    int hoursWorked;
+    public int hourlyWage;
+    public int hoursWorked;
     public PartTimeEmployee(String name, int hourlyWage, int hoursWorked) {
         super(name); 
         this.hourlyWage = hourlyWage;

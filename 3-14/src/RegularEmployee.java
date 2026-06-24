@@ -1,5 +1,5 @@
 public class RegularEmployee extends Employee {
-    int baseSalary;
+    public int baseSalary;
    
     public RegularEmployee(String name, int baseSalary) {
         super(name); 
