@@ -15,7 +15,7 @@ name       | salary
 
 問題２
 SQL文
-SELECT name AS '社員名', salary AS '給与額'
+SELECT name AS "社員名", salary AS "給与額"
 FROM employees;
 
 出力結果
@@ -59,10 +59,9 @@ WHERE department = '人事';
 (4 行)
 
 問題５
-SQL文（データの追加）
-INSERT INTO employees (employee_id, name, department, salary, hire_date)
-VALUES (6, '鳥山 信夫', 'IT', 60000, '2023-09-15'),
-       (7, '山本 三郎', '開発', 58000, '2023-09-20');
+INSERT INTO employees (name, department, salary, hire_date)
+VALUES ('鳥山 信夫', 'IT', 60000, '2023-09-15'),
+       ('山本 三郎', '開発', 58000, '2023-09-20');
 
 データの確認
 SELECT * FROM employees;
