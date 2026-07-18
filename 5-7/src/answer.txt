@@ -1,0 +1,60 @@
+問題1
+SELECT name, salary
+FROM employees
+WHERE salary >= 48000;
+
+   name    | salary 
+-----------+--------
+ 高田 太郎 |  55000
+ 田村 花子 |  62000
+ 鈴木 次郎 |  48000
+ 田中 一郎 |  70000
+ 高橋 美咲 |  53000
+(5 行)
+
+問題2
+SELECT name, department
+FROM employees
+WHERE department IN ('営業', 'IT', '開発');
+
+   name    | department 
+-----------+------------
+ 高田 太郎 | 営業
+ 鈴木 次郎 | IT
+ 田中 一郎 | 営業
+(3 行)
+
+問題3
+SELECT *
+FROM employees
+WHERE manager_id IS NULL
+  AND name LIKE '%田%';
+
+ employee_id |   name    | department | salary | hire_date  | manager_id 
+-------------+-----------+------------+--------+------------+------------
+        5673 | 高田 太郎 | 営業       |  55000 | 2019-06-15 |           
+        5676 | 田中 一郎 | 営業       |  70000 | 2018-09-10 |           
+(2 行)
+
+問題4
+SELECT name, department, salary
+FROM employees
+WHERE salary BETWEEN 50000 AND 60000
+ORDER BY salary ASC;
+
+   name    |  department  | salary 
+-----------+--------------+--------
+ 高橋 美咲 | マーケティング |  53000
+ 高田 太郎 | 営業         |  55000
+(2 行)
+
+問題5
+SELECT name, department
+FROM employees
+WHERE department != '営業'
+  AND salary >= 55000;
+
+   name    |  department  
+-----------+--------------
+ 田村 花子 | マーケティング
+(1 行)
