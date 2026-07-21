@@ -46,6 +46,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Controller
@@ -312,11 +313,28 @@ public class HomeController {
         model.addAttribute("outgoingFriendRequests", outgoing);
         model.addAttribute("hasFriendRequests", !incoming.isEmpty());
 
-        List<Map<String, Object>> leaderboard = new ArrayList<>();
-        leaderboard.add(friendLeaderboardRow(currentUser, currentUser, today, true));
+        List<UserAccount> leaderboardUsers = new ArrayList<>();
+        leaderboardUsers.add(currentUser);
         for (Friendship f : accepted) {
             UserAccount friend = f.getRequester().getId().equals(currentUser.getId()) ? f.getAddressee() : f.getRequester();
-            leaderboard.add(friendLeaderboardRow(friend, currentUser, today, false));
+            leaderboardUsers.add(friend);
+        }
+
+        // ★N+1対策：行ごとに「応援済みか」「何人から応援されたか」を問い合わせるのではなく、
+        // 「自分が今日送った応援」と「リーダーボード全員が今日受け取った応援」をそれぞれ1回のクエリで取得し、
+        // メモリ上のMap/Setで引く（人数が増えてもクエリ件数が2件のまま増えないようにする）。
+        Set<Long> alreadyCheeredUserIds = cheerRepository.findByFromUserAndCheerDate(currentUser, today).stream()
+                .map(c -> c.getToUser().getId())
+                .collect(Collectors.toSet());
+        List<Cheer> cheersReceivedTodayByLeaderboard = cheerRepository.findByToUserInAndCheerDate(leaderboardUsers, today);
+        Map<Long, Long> cheerCountByUserId = cheersReceivedTodayByLeaderboard.stream()
+                .collect(Collectors.groupingBy(c -> c.getToUser().getId(), Collectors.counting()));
+
+        List<Map<String, Object>> leaderboard = new ArrayList<>();
+        for (UserAccount u : leaderboardUsers) {
+            boolean isSelf = u.getId().equals(currentUser.getId());
+            int cheersReceived = cheerCountByUserId.getOrDefault(u.getId(), 0L).intValue();
+            leaderboard.add(friendLeaderboardRow(u, today, isSelf, alreadyCheeredUserIds.contains(u.getId()), cheersReceived));
         }
         leaderboard.sort((a, b) -> {
             int levelCompare = Integer.compare((int) b.get("level"), (int) a.get("level"));
@@ -325,12 +343,16 @@ public class HomeController {
         });
         model.addAttribute("friendLeaderboard", leaderboard);
 
-        // ★今日自分を応援してくれた人の一覧（みんチャレ/Strava風のkudos表示）
-        List<Cheer> cheersReceivedToday = cheerRepository.findByToUserAndCheerDate(currentUser, today);
+        // ★今日自分を応援してくれた人の一覧（みんチャレ/Strava風のkudos表示）。
+        // 上で取得済みのcheersReceivedTodayByLeaderboardから自分宛てだけ絞り込めば、追加クエリ不要。
+        List<Cheer> cheersReceivedToday = cheersReceivedTodayByLeaderboard.stream()
+                .filter(c -> c.getToUser().getId().equals(currentUser.getId()))
+                .collect(Collectors.toList());
         model.addAttribute("cheersReceivedToday", cheersReceivedToday);
     }
 
-    private Map<String, Object> friendLeaderboardRow(UserAccount user, UserAccount currentUser, LocalDate today, boolean isSelf) {
+    private Map<String, Object> friendLeaderboardRow(UserAccount user, LocalDate today, boolean isSelf,
+                                                       boolean alreadyCheeredToday, int cheersReceivedToday) {
         Map<String, Object> row = new HashMap<>();
         row.put("userId", user.getId());
         row.put("username", user.getUsername());
@@ -338,9 +360,8 @@ public class HomeController {
         row.put("exp", user.getExp());
         row.put("streak", calculateStreak(user, today));
         row.put("isSelf", isSelf);
-        row.put("alreadyCheeredToday", !isSelf
-                && cheerRepository.existsByFromUserAndToUserAndCheerDate(currentUser, user, today));
-        row.put("cheersReceivedToday", cheerRepository.findByToUserAndCheerDate(user, today).size());
+        row.put("alreadyCheeredToday", !isSelf && alreadyCheeredToday);
+        row.put("cheersReceivedToday", cheersReceivedToday);
         return row;
     }
 

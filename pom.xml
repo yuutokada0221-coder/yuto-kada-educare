@@ -102,6 +102,37 @@
             <artifactId>bcprov-jdk18on</artifactId>
             <version>1.78.1</version>
         </dependency>
+        <!-- ★DBスキーマのバージョン管理（ddl-auto=updateからの移行）。Flyway 10+はDB種別ごとに
+             アーティファクトが分かれているため、Postgres用を明示的に追加する必要がある -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-flyway</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
+        </dependency>
+        <!-- ★セッションをDBに永続化し、サーバー再起動でログイン状態が失われないようにする。
+             Spring Boot 4はストア種別（jdbc/redis等）ごとのオートコンフィグも別アーティファクトに
+             分割されているため、spring-boot-session（総合設定）とspring-boot-session-jdbc
+             （store-type=jdbcを実際に有効化する側）の両方が必要 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-session</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-session-jdbc</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.session</groupId>
+            <artifactId>spring-session-jdbc</artifactId>
+        </dependency>
+        <!-- ★運用監視用のメトリクス公開（/actuator/prometheus） -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
 	</dependencies>
 
 	<build>

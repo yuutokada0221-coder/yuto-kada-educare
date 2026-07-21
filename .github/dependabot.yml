@@ -1,0 +1,14 @@
+version: 2
+updates:
+  # Maven依存関係（pom.xml）の更新PRを毎週まとめて提案してもらう
+  - package-ecosystem: "maven"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+
+  # GitHub Actionsのワークフロー自体（actions/checkout等）の更新も対象にする
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
