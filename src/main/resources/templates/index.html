@@ -1,0 +1,1130 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="_csrf" th:content="${_csrf.token}">
+    <meta name="_csrf_header" th:content="${_csrf.headerName}">
+    <title>目標達成RPG</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body th:class="${currentTheme} + (${currentTheme == 'custom' && customBackgroundUrl != null} ? ' custom-bg' : '')"
+      th:style="${currentTheme == 'custom' && customBackgroundUrl != null} ? ('background-image:url(' + ${customBackgroundUrl} + ');') : ''">
+
+
+    <div th:if="${showWelcomePopup}" id="welcomePopup" class="popup-overlay">
+        <div class="popup-content">
+            <span class="icon-badge tint-gold" style="margin-bottom: 10px;"><svg class="icon"><use href="/icons.svg#i-flame"></use></svg></span>
+            <h2 class="mb-0">おかえりなさい</h2>
+            <p class="text-muted mt-2" style="font-weight: 600;">現在の連続ログイン</p>
+            <span class="streak-number" th:text="${streak} + ' Days'" style="display: block; margin: 6px 0; line-height: 1;"></span>
+            <p th:if="${loginBonusExp > 0}" class="row" style="justify-content:center; color: var(--gold-dark); font-weight: 700; margin: 0 0 5px;">
+                <svg class="icon icon-sm"><use href="/icons.svg#i-gift"></use></svg> ログインボーナス +<span th:text="${loginBonusExp}"></span>EXP
+            </p>
+            <p th:if="${usedStreakFreeze}" class="row" style="justify-content:center; text-align:left; color: var(--secondary); font-weight: 700; margin: 0 0 5px;">
+                <svg class="icon icon-sm" style="flex-shrink:0;"><use href="/icons.svg#i-snowflake"></use></svg>
+                <span>お休みチケットを使って連続記録を守りました。また今日から積み上げていきましょう。</span>
+            </p>
+            <p th:if="${comebackMessage != null}" style="color: var(--purple-dark); font-weight: 700; margin: 0 0 5px;" th:text="${comebackMessage}"></p>
+            <p style="font-weight: 600; margin-bottom: 22px;">今日も目標に向かってアクションを記録しましょう。</p>
+            <button onclick="closePopup()" class="btn-duo btn-primary mt-0">さっそく始める</button>
+        </div>
+    </div>
+
+    <!-- ★レベルアップ演出。EXPを獲得する4種類のアクション（TODO保存・ジャーナル保存・クエスト受取・ログインボーナス）
+         のいずれかでレベルが上がった時だけ出す、この場面専用の「ポップで気分の上がる」ポップアップ。
+         他のポップアップは落ち着いた演出にとどめている分、ここだけは弾む動きと紙吹雪で差をつける。
+         ダメージポップアップより先にDOMへ置くことで、両方同時に発生した時はダメージ→レベルアップの順で見え、
+         地味な戦闘結果の後に一番テンションの上がる瞬間が来るようにしている。 -->
+    <div th:if="${levelUpTo != null}" id="levelUpPopup" class="popup-overlay level-up-overlay">
+        <div class="popup-content level-up-content">
+            <div class="level-up-rays" aria-hidden="true"></div>
+            <div class="level-up-burst" aria-hidden="true"></div>
+            <div class="level-up-sparkle" style="top: 8%; left: 12%; --ss: 16px; --sd: 0.2s;" aria-hidden="true"><svg class="icon"><use href="/icons.svg#i-star"></use></svg></div>
+            <div class="level-up-sparkle" style="top: 14%; right: 10%; --ss: 12px; --sd: 0.6s;" aria-hidden="true"><svg class="icon"><use href="/icons.svg#i-star"></use></svg></div>
+            <div class="level-up-sparkle" style="bottom: 30%; left: 6%; --ss: 13px; --sd: 1s;" aria-hidden="true"><svg class="icon"><use href="/icons.svg#i-star"></use></svg></div>
+            <div class="level-up-sparkle" style="bottom: 24%; right: 8%; --ss: 18px; --sd: 0.4s;" aria-hidden="true"><svg class="icon"><use href="/icons.svg#i-star"></use></svg></div>
+            <div class="level-up-sparkle" style="top: 46%; left: 2%; --ss: 11px; --sd: 0.8s;" aria-hidden="true"><svg class="icon"><use href="/icons.svg#i-star"></use></svg></div>
+            <div class="level-up-confetti" aria-hidden="true">
+                <span style="--tx:-110px; --ty:-70px; --rot:-40deg; --d:0s;"></span>
+                <span class="round" style="--tx:-50px; --ty:-140px; --rot:30deg; --d:0.03s;"></span>
+                <span style="--tx:25px; --ty:-150px; --rot:-20deg; --d:0.06s;"></span>
+                <span class="round" style="--tx:100px; --ty:-115px; --rot:50deg; --d:0.02s;"></span>
+                <span style="--tx:140px; --ty:-40px; --rot:-35deg; --d:0.08s;"></span>
+                <span class="round" style="--tx:155px; --ty:50px; --rot:60deg; --d:0.05s;"></span>
+                <span style="--tx:115px; --ty:130px; --rot:-25deg; --d:0.1s;"></span>
+                <span class="round" style="--tx:40px; --ty:165px; --rot:40deg; --d:0.04s;"></span>
+                <span style="--tx:-40px; --ty:165px; --rot:-45deg; --d:0.09s;"></span>
+                <span class="round" style="--tx:-115px; --ty:130px; --rot:25deg; --d:0.01s;"></span>
+                <span style="--tx:-155px; --ty:50px; --rot:-55deg; --d:0.07s;"></span>
+                <span class="round" style="--tx:-140px; --ty:-40px; --rot:35deg; --d:0.03s;"></span>
+                <span style="--tx:0px; --ty:-175px; --rot:15deg; --d:0.12s;"></span>
+                <span class="round" style="--tx:70px; --ty:150px; --rot:-30deg; --d:0.11s;"></span>
+                <span style="--tx:-70px; --ty:150px; --rot:45deg; --d:0.13s;"></span>
+                <span class="round" style="--tx:-170px; --ty:0px; --rot:-15deg; --d:0.06s;"></span>
+                <span style="--tx:170px; --ty:0px; --rot:20deg; --d:0.09s;"></span>
+                <span class="round" style="--tx:0px; --ty:180px; --rot:-40deg; --d:0.02s;"></span>
+            </div>
+            <p class="level-up-kicker">LEVEL UP</p>
+            <div class="level-up-figure"><svg class="icon"><use href="/icons.svg#i-mark"></use></svg></div>
+            <div class="level-up-number" th:text="${levelUpTo}"></div>
+            <p class="level-up-sub">ここまで積み上げてきた成果です</p>
+            <button onclick="closeLevelUpPopup()" class="btn-duo btn-gold" style="margin-top: 18px;">つづける</button>
+        </div>
+    </div>
+
+    <div th:if="${damageDealt != null}" id="damagePopup" class="popup-overlay">
+        <div class="popup-content">
+            <span class="icon-badge tint-danger" style="margin-bottom: 8px;"><svg class="icon"><use href="/icons.svg#i-zap"></use></svg></span>
+            <h2 style="color: var(--danger); margin: 6px 0;">ダメージ</h2>
+            <p style="font-weight: 600; font-size: 1.05em;">ボスに <span th:text="${damageDealt}"></span> ダメージを与えた</p>
+            <p th:if="${monsterDefeated}" class="monster-defeated-banner">モンスターを撃破した！</p>
+            <button onclick="closeDamagePopup()" class="btn-duo btn-danger" style="margin-top: 14px;">よし！</button>
+        </div>
+    </div>
+
+    <div id="detailPopup" class="popup-overlay" style="display:none;">
+        <div class="popup-content popup-wide">
+            <h2 id="detailPopupTitle" style="color: var(--text);"></h2>
+            <div id="detailPopupBody" style="font-size: 0.95em; line-height: 1.8;"></div>
+            <button onclick="closeDetailPopup()" class="btn-duo btn-outline" style="margin-top: 18px;">閉じる</button>
+        </div>
+    </div>
+
+    <!-- ★カレンダーで未ログインの日をクリックした時に出す、お休みチケット使用確認ポップ -->
+    <div id="ticketPopup" class="popup-overlay" style="display:none;">
+        <div class="popup-content">
+            <span class="icon-badge tint-secondary" style="margin-bottom: 6px;"><svg class="icon"><use href="/icons.svg#i-snowflake"></use></svg></span>
+            <h2 style="color: var(--secondary); margin: 6px 0;">お休みチケットを使用</h2>
+            <p style="font-weight: 600; margin: 0 0 4px;"><span id="ticketPopupDate"></span> はログインしていません。</p>
+            <p class="text-muted text-sm" style="margin: 0 0 6px;">チケットを使うと、この日をログイン済みとして記録できます。</p>
+            <p class="text-muted text-sm" style="margin: 0 0 18px;">残りチケット：<span id="ticketPopupRemaining" style="font-weight: 700; color: var(--secondary);"></span>枚</p>
+            <form th:action="@{/useStreakFreezeTicket}" method="post" id="ticketForm">
+                <input type="hidden" name="date" id="ticketPopupDateInput">
+                <button type="submit" id="ticketPopupUseBtn" class="btn-duo btn-secondary mt-0">使用する</button>
+            </form>
+            <button onclick="closeTicketPopup()" class="btn-duo btn-outline" style="margin-top: 8px;">キャンセル</button>
+        </div>
+    </div>
+
+    <!-- ★アプリ全体の使い方ガイド。ヘッダーの「使い方」ボタンから開く -->
+    <div id="howToPopup" class="popup-overlay" style="display:none;">
+        <div class="popup-content popup-wide" style="max-height: 85vh; overflow-y: auto;">
+            <h2 class="row"><svg class="icon"><use href="/icons.svg#i-book"></use></svg> 目標達成RPGの使い方</h2>
+            <p class="text-muted text-sm" style="margin-top: -8px;">日々の行動を記録してEXPを貯め、レベルアップしながら目標達成を目指すアプリです。はじめての方は、まず下の「基本の流れ」だけ読めばOKです。</p>
+
+            <div class="mt-4" style="font-size: 0.9em; line-height: 1.7;">
+
+                <h3 style="color: var(--gold-dark);">まずはこれだけ！基本の流れ</h3>
+                <ol class="text-muted" style="margin: 4px 0 0; padding-left: 1.3em;">
+                    <li><b style="color: var(--text);">毎朝</b>：Morningタブで今日やることを3つ決めてチェック</li>
+                    <li><b style="color: var(--text);">毎晩</b>：Nightタブで今日1日を振り返ってジャーナルを書く</li>
+                    <li><b style="color: var(--text);">気づいた時</b>：Questタブに「！」が出ていたら報酬を受け取る</li>
+                    <li><b style="color: var(--text);">たまに</b>：実績タブでバッジの進み具合、設定タブで新しいテーマをチェック</li>
+                </ol>
+                <p class="text-muted mt-2">これを毎日続けるだけでEXPが貯まり、レベルが上がっていきます。</p>
+
+                <hr class="divider">
+
+                <h3 style="color: var(--secondary);">Morning（朝のTODO）</h3>
+                <ol class="text-muted" style="margin: 4px 0 0; padding-left: 1.3em;">
+                    <li>「今日やりたいこと」を最大3つ、入力欄に書く（例：読書30分）</li>
+                    <li>できたらチェックボックスにチェックを入れる</li>
+                    <li>「やらない事（防御）」には、やめたい悪い習慣を書いておく。我慢できたらチェック</li>
+                    <li>下の「保存」ボタンを押す</li>
+                </ol>
+                <p class="text-muted mt-2">
+                    チェックした項目1つにつき+1EXP。同時に画面のボスにもダメージが入り（達成したTODO1つにつき1ダメージ）、3つ全部達成するとボスを倒せます。保存できるのは1日1回、翌日また新しく入力し直します。
+                </p>
+
+                <h3 style="color: var(--purple);">Night（夜のジャーナル）</h3>
+                <ol class="text-muted" style="margin: 4px 0 0; padding-left: 1.3em;">
+                    <li>今日「達成できたこと」を一言書く</li>
+                    <li>「感謝したこと」を最大3つ書く</li>
+                    <li>自由に日記を書く（写真を1枚貼り付けることもできます）</li>
+                    <li>今日の気分を★1〜5で選ぶ</li>
+                </ol>
+                <p class="text-muted mt-2">
+                    入力した項目ごとに+1EXP（全部埋めると最大+6EXP）。空欄のままでもOKですが、何か1つも入力しないと保存できません。こちらも1日1回だけです。<br>
+                    「写真を貼り付ける」欄からJPEG/PNG画像（15MBまで）を選ぶと、その日の記録に写真が添付され、履歴やクリックした時の詳細表示でも確認できます（写真の添付自体にEXPは付きません）。
+                </p>
+
+                <h3 style="color: var(--gold-dark);">Quest（クエスト）</h3>
+                <p class="text-muted" style="margin: 4px 0;">
+                    <b style="color: var(--text);">デイリークエスト</b>は毎日リセットされる短い目標（例：今日のTODOを1つ達成する）、<b style="color: var(--text);">ウィークリークエスト</b>は週替わりの目標（例：週5日ログインする）です。条件を満たすと自動で進捗（例：2/1）が埋まり、「受け取る」ボタンを押すとEXPがもらえます。
+                </p>
+                <p class="text-muted" style="margin: 4px 0;">
+                    受け取り忘れを防ぐため、達成済みなのに未受取のクエストがあると、下のタブの「Quest」の横に赤い「！」マークが出ます。見かけたら忘れずに受け取りましょう。
+                </p>
+
+                <h3 style="color: var(--gold-dark);">実績（バッジ）</h3>
+                <p class="text-muted" style="margin: 4px 0;">
+                    「レベル」「連続ログイン日数」「ジャーナル記録数」「TODO達成数」の4種類の条件で、それぞれ複数ランクのバッジが用意されています。条件を満たすと自動で解放されます。まだ取っていないバッジもグレーで表示され、あと何回・あといくつで取れるかの進捗も見えるので、次の目標がわかりやすくなっています。
+                </p>
+
+                <h3 style="color: var(--secondary);">フレンド</h3>
+                <p class="text-muted" style="margin: 4px 0;">
+                    相手のユーザー名を入力して申請を送り、相手が承認するとフレンドになれます。フレンドタブのリーダーボードで、自分とフレンドをレベル順に見比べられます。届いている申請があるとフレンドタブに赤い「！」が表示されます。<br>
+                    リーダーボードの各フレンドには「応援する」ボタンがあり、1日1回押すと相手に+1EXPが届き、通知（有効にしていれば）でも伝わります。応援は誰から届いたか毎日リセットされて表示されます。<br>
+                    フレンドタブには「週間リーグ」もあります。全ユーザーがブロンズ〜ダイヤモンドの5階層に分かれ、毎週月曜の朝に、同じ階層の中で今週の獲得EXPが上位30%なら昇格、下位30%なら降格します。フレンドでなくても同じ階層の人と競い合えます。
+                </p>
+
+                <h3 style="color: var(--secondary-dark);">連続ログイン・累計・達成率</h3>
+                <p class="text-muted" style="margin: 4px 0;">
+                    <b style="color: var(--text);">連続ログイン</b>は、毎日欠かさずログインした日数です。1日でもログインしない日があると0に戻ってしまいます（後述のお休みチケットで救済できます）。<br>
+                    <b style="color: var(--text);">累計達成日数</b>は、これまでログインした合計日数。連続記録が途切れても減りません。<br>
+                    <b style="color: var(--text);">達成率</b>は、これまで入力したTODOのうち実際にチェックできた割合です。<br>
+                    連続ログインカードの「連続記録をシェア画像で保存」を押すと、現在の連続日数・レベル・累計日数入りの画像がダウンロードでき、SNSなどでシェアできます。
+                </p>
+
+                <h3 style="color: var(--secondary-dark);">お休みチケットの使い方（くわしく）</h3>
+                <p class="text-muted" style="margin: 4px 0;">
+                    忙しくてログインできなかった日があっても、連続ログイン記録をあきらめなくていいようにするための仕組みです。毎週<b style="color: var(--text);">月曜日に1枚</b>、自動で補充されます（使わなくても翌週まで繰り越されず1枚にリセットされます）。使い方は2通りあります。
+                </p>
+                <p class="text-muted" style="margin: 4px 0;">
+                    <b style="color: var(--text);">① 自動で救済される場合</b><br>
+                    昨日ログインするのを忘れてしまっても、一昨日はログインしていて、今日また改めてログインした場合は、気づかないうちにチケットが自動で1枚使われ、昨日が「ログイン済み」として記録されます（連続記録が途切れずに済みます）。ログイン時のポップアップに「お休みチケットを使って連続記録を守りました」と出たら、これが発動したサインです。
+                </p>
+                <p class="text-muted" style="margin: 4px 0;">
+                    <b style="color: var(--text);">② 自分でカレンダーから使う場合</b><br>
+                    左側のカレンダーで、色がついていない過去の日（＝ログインしていない日）をクリックすると「お休みチケットを使用」というポップアップが出ます。「使用する」ボタンを押すと、その日がログイン済みとして記録され、カレンダーに色がつきます。
+                </p>
+                <p class="text-muted" style="margin: 4px 0;">
+                    <b style="color: var(--text);">注意点</b>：今日・未来の日には使えません。すでに記録がある日（色がついている日）や、アカウントを作る前の日にも使えません。チケットが0枚のときも使えないので、その週はログインを頑張りましょう。
+                </p>
+
+                <h3 style="color: var(--secondary);">カレンダーの色の見方</h3>
+                <p class="text-muted" style="margin: 4px 0;">
+                    色が濃いほど、その日にたくさん行動した（TODOやジャーナルをたくさん記録した）ことを表します。色がついていない日は、何も記録がない日です。
+                </p>
+
+                <h3 style="color: var(--accent);">グラフ・気分の推移</h3>
+                <p class="text-muted" style="margin: 4px 0;">
+                    「今週の成長グラフ」で直近1週間に獲得したEXPの推移を、「気分の推移」で直近14日間の気分スコア（★の数）の移り変わりをグラフで振り返れます。
+                </p>
+
+                <h3 style="color: var(--secondary);">設定でできること</h3>
+                <p class="text-muted" style="margin: 4px 0;">
+                    <b style="color: var(--text);">テーマ</b>：レベルが10上がるごとに新しい背景テーマ（サクラピンク、フォレストグリーンなど）が解放され、ボタン1つで切り替えられます。<br>
+                    <b style="color: var(--text);">好きな画像を背景に</b>：Lv30に到達すると、お気に入りの画像（JPEG/PNG、15MBまで）をアップロードしてアプリ全体の背景にできます。<br>
+                    <b style="color: var(--text);">目標・習慣の設定</b>：長期目標、なりたい自分（アイデンティティ宣言）、朝の固定習慣（Morningタブに自動で入力される内容）、通知の頻度をいつでも変更できます。<br>
+                    <b style="color: var(--text);">アカウント</b>：メールアドレスを登録しておくと、パスワードを忘れた時にログイン画面から再設定できるようになります。<br>
+                    <b style="color: var(--text);">通知</b>：「通知頻度」を選んだ上で「この端末で通知を有効にする」ボタンを押すと、その端末のブラウザ通知としてリマインドが届くようになります（端末ごとに許可が必要です）。
+                </p>
+
+                <h3 style="color: var(--danger);">レベルとEXPの仕組み</h3>
+                <p class="text-muted" style="margin: 4px 0;">
+                    TODOのチェック、やらない事の達成、ジャーナルの各項目の入力、毎日のログインボーナスなど、行動1つにつき+1EXPがもらえます。EXPが100貯まるごとにレベルが1上がり、レベルに応じてテーマや背景アップロードなどの新しい機能が解放されていきます。
+                </p>
+            </div>
+
+            <button onclick="closeHowToPopup()" class="btn-duo btn-primary" style="margin-top: 18px;">わかった！</button>
+        </div>
+    </div>
+
+    <!-- ヘッダー -->
+    <div class="app-header">
+        <div class="header-content">
+            <h1><svg class="icon icon-lg"><use href="/icons.svg#i-mark"></use></svg> 目標達成RPG</h1>
+            <div class="app-nav-links">
+                <a th:if="${isAdmin}" th:href="@{/admin}" class="nav-btn"><svg class="icon icon-sm"><use href="/icons.svg#i-tool"></use></svg> 管理者画面</a>
+                <button type="button" onclick="openHowToPopup()" class="btn-duo btn-outline btn-sm"><svg class="icon icon-sm"><use href="/icons.svg#i-help"></use></svg> 使い方</button>
+                <form th:action="@{/logout}" method="post" class="mb-0">
+                    <button type="submit" class="btn-duo btn-outline btn-sm"><svg class="icon icon-sm"><use href="/icons.svg#i-log-out"></use></svg> ログアウト</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div th:if="${notAdmin}" class="container" style="margin-bottom: 0; padding-top: var(--space-4);">
+        <div class="banner banner-danger mb-0">
+            <svg class="icon"><use href="/icons.svg#i-alert"></use></svg>
+            このアカウントには管理者権限がありません。ユーザーとしてログインしました。
+        </div>
+    </div>
+
+    <!-- メインレイアウト -->
+    <div class="container main-layout">
+
+        <!-- 左カラム -->
+        <div class="left-col">
+            <div class="card-duo text-center">
+                <span class="row" style="justify-content:center; font-size: 1.05em; color: var(--text-muted); font-weight: 700;">
+                    <svg class="icon" style="color:var(--accent);"><use href="/icons.svg#i-flame"></use></svg> 連続ログイン
+                </span>
+                <div style="margin: 8px 0;">
+                    <span class="streak-number" th:text="${streak}"></span><span style="font-weight: 700; color: var(--text-muted);">Days</span>
+                </div>
+
+                <!-- ★累計・達成率の併記：ストリークが途切れても積み上げが見える -->
+                <div class="stat-row">
+                    <div class="stat-mini">
+                        <div class="stat-value" th:text="${cumulativeDays}"></div>
+                        <div class="stat-label">累計達成日数</div>
+                    </div>
+                    <div class="stat-mini">
+                        <div class="stat-value" th:text="${achievementRate} + '%'"></div>
+                        <div class="stat-label">達成率</div>
+                    </div>
+                    <div class="stat-mini">
+                        <div class="stat-value"><svg class="icon icon-sm"><use href="/icons.svg#i-snowflake"></use></svg><span th:text="${streakFreezeRemaining}"></span></div>
+                        <div class="stat-label">お休みチケット</div>
+                    </div>
+                </div>
+
+                <div class="mt-4 divider-top" style="text-align: left; padding-top: var(--space-3); border-top: 1px solid var(--border);">
+                    <div class="row-between" style="font-weight: 700; margin-bottom: 5px;">
+                        <span class="level-badge">Lv. <span th:text="${level}" style="font-size: 1.2em;"></span></span>
+                        <span class="text-sm text-muted"><span th:text="${expProgress}"></span> / <span th:text="${expRequired}"></span> EXP</span>
+                    </div>
+                    <div class="exp-container">
+                        <div class="exp-bar" th:style="'width: ' + ${expProgressPercent} + '%;'"></div>
+                    </div>
+                </div>
+
+                <a th:href="@{/share-image}" class="btn-duo btn-outline btn-sm mt-4" style="width: 100%; text-decoration: none;">
+                    <svg class="icon icon-sm"><use href="/icons.svg#i-share"></use></svg> 連続記録をシェア画像で保存
+                </a>
+            </div>
+
+            <div class="card-duo">
+                <h3 class="text-muted text-center" style="justify-content: center; font-size: 0.88em; margin-bottom: 10px;" id="cal-month-title"></h3>
+                <div th:if="${param.ticketUsed != null}" class="banner banner-success">
+                    <svg class="icon"><use href="/icons.svg#i-snowflake"></use></svg> チケットを使ってその日をログイン済みにしました。
+                </div>
+                <div th:if="${param.error != null and #strings.startsWith(param.error[0], 'ticket')}" class="banner banner-danger"
+                     th:text="${param.error[0] == 'ticketNone'} ? 'お休みチケットの残りがありません。' : (${param.error[0] == 'ticketAlreadyLogged'} ? 'その日はすでに記録されています。' : '無効な日付です。')"></div>
+                <div id="calendar" class="calendar-grid"></div>
+                <p class="text-muted text-xs mt-2 mb-0">色のついていない過去の日をクリックすると、お休みチケットでログイン済みにできます。</p>
+            </div>
+
+            <div class="card-duo">
+                <h3 style="color: var(--secondary);"><svg class="icon icon-sm"><use href="/icons.svg#i-trending-up"></use></svg> 今週の成長グラフ</h3>
+                <canvas id="myChart" style="max-height: 200px;"></canvas>
+            </div>
+
+            <div class="card-duo">
+                <h3 style="color: var(--gold-dark);"><svg class="icon icon-sm"><use href="/icons.svg#i-star"></use></svg> 気分の推移（直近14日）</h3>
+                <canvas id="moodChart" style="max-height: 160px;"></canvas>
+            </div>
+
+            <div class="card-duo" th:if="${!badges.isEmpty()}">
+                <h3 style="color: var(--gold-dark);"><svg class="icon icon-sm"><use href="/icons.svg#i-award"></use></svg> 獲得した称号</h3>
+                <div class="row-wrap">
+                    <span th:each="b : ${badges}" class="badge-pill" th:text="${b.icon} + ' ' + ${b.name}"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右カラム -->
+        <div class="right-col" style="min-width: 0;">
+
+            <div class="tab-buttons">
+                <button class="tab-btn active morning" onclick="switchTab('morning')"><svg class="icon icon-sm"><use href="/icons.svg#i-sun"></use></svg> Morning</button>
+                <button class="tab-btn night" onclick="switchTab('night')"><svg class="icon icon-sm"><use href="/icons.svg#i-moon"></use></svg> Night</button>
+                <button class="tab-btn quest" onclick="switchTab('quest')">
+                    <svg class="icon icon-sm"><use href="/icons.svg#i-map"></use></svg> Quest
+                    <span th:if="${hasUnclaimedQuest}" class="badge-dot">!</span>
+                </button>
+                <button class="tab-btn achievements" onclick="switchTab('achievements')"><svg class="icon icon-sm"><use href="/icons.svg#i-award"></use></svg> 実績</button>
+                <button class="tab-btn friends" onclick="switchTab('friends')">
+                    <svg class="icon icon-sm"><use href="/icons.svg#i-users"></use></svg> フレンド
+                    <span th:if="${hasFriendRequests}" class="badge-dot">!</span>
+                </button>
+                <button class="tab-btn settings" onclick="switchTab('settings')"><svg class="icon icon-sm"><use href="/icons.svg#i-settings"></use></svg> 設定</button>
+            </div>
+
+            <!-- 朝の部 -->
+            <div id="morning-tab" class="tab-content active">
+                <div class="card-duo accent-left">
+                    <h3 style="color: var(--gold-dark); margin-bottom: 5px; font-size: 0.85em;"><svg class="icon icon-sm"><use href="/icons.svg#i-target"></use></svg> 現在の長期目標</h3>
+                    <p style="font-weight: 700; font-size: 1.05em; margin: 0;" th:text="${userGoal != null && userGoal != '' ? userGoal : '未設定（設定タブから登録してください）'}"></p>
+                </div>
+
+                <div class="card-duo accent-left purple" th:if="${identityDeclaration != null && identityDeclaration != ''}">
+                    <h3 style="color: var(--purple-dark); margin-bottom: 5px; font-size: 0.85em;"><svg class="icon icon-sm"><use href="/icons.svg#i-compass"></use></svg> なりたい自分</h3>
+                    <p style="font-weight: 700; font-size: 1.05em; margin: 0;" th:text="${identityDeclaration}"></p>
+                </div>
+
+                <!-- ★モンスターバトル演出 -->
+                <div class="card-duo">
+                    <h3 style="color: var(--danger);"><svg class="icon icon-sm"><use href="/icons.svg#i-zap"></use></svg> モンスターバトル</h3>
+                    <div class="monster-arena">
+                        <div class="monster-sprite" th:classappend="${monsterDefeated} ? 'defeated' : ''">👹</div>
+                        <div class="monster-hp-bar"><div class="monster-hp-fill" th:style="'width:' + ${monsterHpPercent} + '%;'"></div></div>
+                        <p class="text-sm mt-2 mb-0">
+                            <span th:unless="${monsterDefeated}" class="text-muted" th:text="'のこりHP ' + ${monsterHpCurrent} + ' / ' + ${monsterHpMax}"></span>
+                            <span th:if="${monsterDefeated}" class="monster-defeated-banner">モンスターを撃破した！</span>
+                        </p>
+                    </div>
+                </div>
+
+                <div class="card-duo">
+                    <h2><span class="icon-badge tint-primary"><svg class="icon"><use href="/icons.svg#i-sun"></use></svg></span> 今日のアクション</h2>
+                    <form th:if="${!isTaskDoneToday}" th:action="@{/saveTask}" th:object="${taskForm}" method="post" onsubmit="return checkTask(event)">
+
+                        <div class="task-row" id="row1">
+                            <input type="checkbox" th:field="*{task1Done}" id="cb1">
+                            <input type="text" th:field="*{task1}" placeholder="例：白湯を飲む" id="text1">
+                        </div>
+                        <div class="task-row" id="row2">
+                            <input type="checkbox" th:field="*{task2Done}" id="cb2">
+                            <input type="text" th:field="*{task2}" placeholder="例：5分ストレッチ" id="text2">
+                        </div>
+                        <div class="task-row" id="row3">
+                            <input type="checkbox" th:field="*{task3Done}" id="cb3">
+                            <input type="text" th:field="*{task3}" placeholder="例：本を1ページ読む" id="text3">
+                        </div>
+
+                        <!-- 防御（やらない目標） -->
+                        <h3 style="color: var(--danger); margin-top: 18px; font-size: 0.85em; border-top: 1px solid var(--border); padding-top: 14px;">
+                            <svg class="icon icon-sm"><use href="/icons.svg#i-shield"></use></svg> 今日の防御（悪習を断つ）
+                        </h3>
+                        <div class="task-row" style="background: color-mix(in srgb, var(--danger) 6%, var(--surface)); padding: 10px; border-radius: var(--radius-sm);">
+                            <input type="checkbox" th:field="*{badHabitDone}">
+                            <input type="text" th:field="*{badHabit}" placeholder="例：夜22時以降にスマホを見ない">
+                        </div>
+
+                        <p class="text-muted text-xs mt-3">※アクション・防御1つにつき+1EXPゲット！</p>
+                        <p id="taskErrorText" class="row" style="color: var(--danger); font-weight: 700; margin: 8px 0; display: none;">
+                            <svg class="icon icon-sm"><use href="/icons.svg#i-alert"></use></svg> 1つ以上「入力」と「チェック」をしてください
+                        </p>
+                        <button type="submit" class="btn-duo btn-primary">記録してEXPゲット！</button>
+                    </form>
+
+                    <div th:if="${isTaskDoneToday}" class="text-center" style="padding: 18px 0;">
+                        <h3 style="color: var(--primary);">本日のアクション＆防御は記録完了です</h3>
+                        <p class="text-muted mb-0">明日も目標に向かって頑張りましょう！</p>
+                    </div>
+                </div>
+
+                <div class="card-duo">
+                    <h3 style="color: var(--text-muted);"><svg class="icon icon-sm"><use href="/icons.svg#i-clock"></use></svg> 過去のアクション記録</h3>
+                    <div class="history-area">
+                        <div th:each="task : ${tasks}" class="record-item">
+                            <div style="font-size: 0.9em; cursor: pointer;" onclick="showTaskDetail(this)"
+                                 th:attr="data-date=${task.date},data-task1=${task.task1 ?: ''},data-task1done=${task.task1Done},data-task2=${task.task2 ?: ''},data-task2done=${task.task2Done},data-task3=${task.task3 ?: ''},data-task3done=${task.task3Done},data-badhabit=${task.badHabit ?: ''},data-badhabitdone=${task.badHabitDone}">
+                                <strong th:text="${task.date}" style="color: var(--text);"></strong><br>
+                                <span th:if="${task.task1Done}" th:text="${task.task1}" style="display: block;"></span>
+                                <span th:if="${task.task2Done}" th:text="${task.task2}" style="display: block;"></span>
+                                <span th:if="${task.task3Done}" th:text="${task.task3}" style="display: block;"></span>
+                                <span th:if="${task.badHabitDone}" th:text="'防御成功：' + ${task.badHabit}" style="display: block; color: var(--danger); font-weight: 700;"></span>
+                            </div>
+                            <form th:action="@{/deleteTask/{id}(id=${task.id})}" method="post">
+                                <button type="submit" class="btn-duo btn-danger btn-sm">削除</button>
+                            </form>
+                        </div>
+                        <div th:if="${#lists.isEmpty(tasks)}" class="empty-state">
+                            <svg class="icon icon-xl"><use href="/icons.svg#i-inbox"></use></svg>
+                            <p>まだ記録がありません</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 夜の部 -->
+            <div id="night-tab" class="tab-content">
+                <div class="card-duo">
+                    <h2 class="row-between">
+                        <span class="row"><span class="icon-badge tint-secondary"><svg class="icon"><use href="/icons.svg#i-moon"></use></svg></span> 夜のジャーナル</span>
+                        <span class="text-sm text-muted" style="font-weight:600;">+MAX 6 EXP</span>
+                    </h2>
+
+                    <div th:if="${param.error != null and #strings.startsWith(param.error[0], 'journalPhoto')}" class="banner banner-danger"
+                         th:text="${param.error[0] == 'journalPhotoInvalid'} ? '対応していない画像形式です。JPEGまたはPNG形式でお試しください。' : (${param.error[0] == 'journalPhotoTooLargeDimensions'} ? '写真の解像度が大きすぎます。縮小してから再度お試しください。' : '写真のアップロードに失敗しました。もう一度お試しください。')"></div>
+
+                    <form th:if="${!isJournalDoneToday}" th:action="@{/saveJournal}" th:object="${journalForm}" method="post" enctype="multipart/form-data" onsubmit="return checkJournal(event)">
+                        <label class="field-label">今日の気分は？</label>
+                        <div class="star-picker">
+                            <input type="radio" id="star5" name="moodScore" value="5" th:checked="${journalForm.moodScore == 5}"><label for="star5"><svg class="icon"><use href="/icons.svg#i-star"></use></svg></label>
+                            <input type="radio" id="star4" name="moodScore" value="4" th:checked="${journalForm.moodScore == 4}"><label for="star4"><svg class="icon"><use href="/icons.svg#i-star"></use></svg></label>
+                            <input type="radio" id="star3" name="moodScore" value="3" th:checked="${journalForm.moodScore == 3}"><label for="star3"><svg class="icon"><use href="/icons.svg#i-star"></use></svg></label>
+                            <input type="radio" id="star2" name="moodScore" value="2" th:checked="${journalForm.moodScore == 2}"><label for="star2"><svg class="icon"><use href="/icons.svg#i-star"></use></svg></label>
+                            <input type="radio" id="star1" name="moodScore" value="1" th:checked="${journalForm.moodScore == 1}"><label for="star1"><svg class="icon"><use href="/icons.svg#i-star"></use></svg></label>
+                        </div>
+
+                        <label class="field-label">今日できたこと</label>
+                        <input type="text" th:field="*{achievement}">
+
+                        <label class="field-label">今日の感謝3つ</label>
+                        <input type="text" th:field="*{gratitude1}" placeholder="1つめ">
+                        <input type="text" th:field="*{gratitude2}" placeholder="2つめ">
+                        <input type="text" th:field="*{gratitude3}" placeholder="3つめ">
+
+                        <label class="field-label">今日のできごと</label>
+                        <textarea rows="3" th:field="*{diaryText}"></textarea>
+
+                        <label class="field-label">写真を貼り付ける（任意・JPEG/PNG、15MBまで）</label>
+                        <input type="file" name="photo" accept="image/*" onchange="previewJournalPhoto(event)">
+                        <img id="journalPhotoPreview" style="display:none; width:100%; max-height:220px; object-fit:cover; border-radius: var(--radius-sm); margin-top:8px; border: 1px solid var(--border);">
+
+                        <p class="text-muted text-xs mt-3">※入力した項目につきEXP(+1)がもらえます（写真の添付自体にEXPはありません）</p>
+                        <p id="journalErrorText" class="row" style="color: var(--danger); font-weight: 700; margin: 8px 0; display: none;">
+                            <svg class="icon icon-sm"><use href="/icons.svg#i-alert"></use></svg> どれか1つ以上入力してください
+                        </p>
+                        <button type="submit" class="btn-duo btn-secondary">1日を終えてEXPをゲット！</button>
+                    </form>
+
+                    <div th:if="${isJournalDoneToday}" class="text-center" style="padding: 18px 0;">
+                        <h3 style="color: var(--secondary);">本日のジャーナルは記録完了です</h3>
+                        <p class="text-muted mb-0">今日も一日お疲れ様でした。ゆっくり休んでくださいね。</p>
+                    </div>
+                </div>
+
+                <div class="card-duo">
+                    <h3 style="color: var(--text-muted);"><svg class="icon icon-sm"><use href="/icons.svg#i-clock"></use></svg> 過去のジャーナル記録</h3>
+                    <div class="history-area">
+                        <div th:each="journal : ${journals}" class="record-item">
+                            <img th:if="${journal.photoFilename != null}" th:src="@{'/journal-photos/' + ${journal.photoFilename}}"
+                                 style="width:44px; height:44px; object-fit:cover; border-radius: var(--radius-sm); margin-right: 10px; flex-shrink:0;">
+                            <div style="font-size: 0.9em; width: 75%; cursor: pointer;" onclick="showJournalDetail(this)"
+                                 th:attr="data-date=${journal.date},data-mood=${journal.moodScore},data-achievement=${journal.achievement ?: ''},data-gratitude1=${journal.gratitude1 ?: ''},data-gratitude2=${journal.gratitude2 ?: ''},data-gratitude3=${journal.gratitude3 ?: ''},data-diary=${journal.diaryText ?: ''},data-photo=${journal.photoFilename != null ? '/journal-photos/' + journal.photoFilename : ''}">
+                                <strong th:text="${journal.date}" style="color: var(--text);"></strong>
+                                <span th:each="i : ${#numbers.sequence(1,5)}" th:text="${i <= journal.moodScore} ? '★' : '☆'" th:style="${i <= journal.moodScore} ? 'color:var(--gold);' : 'color:var(--border-strong);'"></span>
+                                <br>
+                                <span th:text="${journal.achievement}" style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"></span>
+                                <span th:if="${journal.diaryText != null && journal.diaryText != ''}" th:text="${journal.diaryText}" style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" class="text-muted"></span>
+                            </div>
+                            <form th:action="@{/deleteJournal/{id}(id=${journal.id})}" method="post">
+                                <button type="submit" class="btn-duo btn-danger btn-sm">削除</button>
+                            </form>
+                        </div>
+                        <div th:if="${#lists.isEmpty(journals)}" class="empty-state">
+                            <svg class="icon icon-xl"><use href="/icons.svg#i-inbox"></use></svg>
+                            <p>まだ記録がありません</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- クエストタブ -->
+            <div id="quest-tab" class="tab-content">
+                <div class="card-duo">
+                    <h2><span class="icon-badge tint-primary"><svg class="icon"><use href="/icons.svg#i-sun"></use></svg></span> デイリークエスト</h2>
+                    <div th:each="qv : ${dailyQuests}" class="quest-item" th:classappend="${qv.completed} ? ' completed' : ''">
+                        <div class="quest-icon" th:text="${qv.quest.icon}"></div>
+                        <div class="quest-body">
+                            <div class="quest-title" th:text="${qv.quest.title}"></div>
+                            <div class="text-muted text-xs" th:text="${qv.quest.description}"></div>
+                            <div class="quest-progress-bar"><div class="quest-progress-fill" th:style="'width:' + ${qv.percent} + '%;'"></div></div>
+                            <div class="text-muted text-xs mt-1" th:text="${qv.current} + ' / ' + ${qv.quest.targetCount}"></div>
+                        </div>
+                        <div class="text-center">
+                            <div class="quest-reward" th:text="'+' + ${qv.quest.rewardExp} + 'EXP'"></div>
+                            <form th:if="${qv.completed and !qv.claimed}" th:action="@{/claimQuest/{id}(id=${qv.quest.id})}" method="post" style="margin-top:6px;">
+                                <button type="submit" class="btn-duo btn-gold btn-sm">受け取る</button>
+                            </form>
+                            <span th:if="${qv.claimed}" class="quest-status earned">受取済</span>
+                            <span th:if="${!qv.claimed and !qv.completed}" class="quest-status text-muted">未達成</span>
+                        </div>
+                    </div>
+                    <p th:if="${#lists.isEmpty(dailyQuests)}" class="text-muted text-center">クエストがありません</p>
+                </div>
+                <div class="card-duo">
+                    <h2><span class="icon-badge tint-gold"><svg class="icon"><use href="/icons.svg#i-flame"></use></svg></span> ウィークリークエスト</h2>
+                    <div th:each="qv : ${weeklyQuests}" class="quest-item" th:classappend="${qv.completed} ? ' completed' : ''">
+                        <div class="quest-icon" th:text="${qv.quest.icon}"></div>
+                        <div class="quest-body">
+                            <div class="quest-title" th:text="${qv.quest.title}"></div>
+                            <div class="text-muted text-xs" th:text="${qv.quest.description}"></div>
+                            <div class="quest-progress-bar"><div class="quest-progress-fill" th:style="'width:' + ${qv.percent} + '%;'"></div></div>
+                            <div class="text-muted text-xs mt-1" th:text="${qv.current} + ' / ' + ${qv.quest.targetCount}"></div>
+                        </div>
+                        <div class="text-center">
+                            <div class="quest-reward" th:text="'+' + ${qv.quest.rewardExp} + 'EXP'"></div>
+                            <form th:if="${qv.completed and !qv.claimed}" th:action="@{/claimQuest/{id}(id=${qv.quest.id})}" method="post" style="margin-top:6px;">
+                                <button type="submit" class="btn-duo btn-gold btn-sm">受け取る</button>
+                            </form>
+                            <span th:if="${qv.claimed}" class="quest-status earned">受取済</span>
+                            <span th:if="${!qv.claimed and !qv.completed}" class="quest-status text-muted">未達成</span>
+                        </div>
+                    </div>
+                    <p th:if="${#lists.isEmpty(weeklyQuests)}" class="text-muted text-center">クエストがありません</p>
+                </div>
+            </div>
+
+            <!-- 実績タブ -->
+            <div id="achievements-tab" class="tab-content">
+                <div class="card-duo">
+                    <h2><span class="icon-badge tint-gold"><svg class="icon"><use href="/icons.svg#i-award"></use></svg></span> 実績コレクション</h2>
+                    <p class="text-muted text-sm" style="margin-bottom: 15px;">未獲得の実績も「あと少し」の進捗が見えます。集めてみましょう！</p>
+                    <div th:each="bv : ${allBadges}" class="quest-item" th:classappend="${bv.earned} ? ' completed' : ''">
+                        <div class="quest-icon" th:classappend="${bv.earned} ? '' : 'dim'" th:text="${bv.badge.icon}"></div>
+                        <div class="quest-body">
+                            <div class="quest-title" th:text="${bv.badge.name}"></div>
+                            <div class="text-muted text-xs" th:text="${bv.badge.description}"></div>
+                            <div class="quest-progress-bar"><div class="quest-progress-fill" th:style="'width:' + ${bv.percent} + '%;'"></div></div>
+                            <div class="text-muted text-xs mt-1" th:text="${bv.current} + ' / ' + ${bv.badge.conditionValue}"></div>
+                        </div>
+                        <div class="quest-status" th:classappend="${bv.earned} ? 'earned' : 'text-muted'">
+                            <span th:if="${bv.earned}">獲得済み</span>
+                            <span th:unless="${bv.earned}">未獲得</span>
+                        </div>
+                    </div>
+                    <p th:if="${#lists.isEmpty(allBadges)}" class="text-muted text-center">実績がまだ登録されていません</p>
+                </div>
+            </div>
+
+            <!-- フレンドタブ -->
+            <div id="friends-tab" class="tab-content">
+                <div class="card-duo">
+                    <h2><span class="icon-badge tint-secondary"><svg class="icon"><use href="/icons.svg#i-users"></use></svg></span> フレンドを追加</h2>
+                    <div th:if="${param.error != null and #strings.startsWith(param.error[0], 'friend')}" class="banner banner-danger"
+                         th:text="${param.error[0] == 'friendNotFound'} ? 'そのユーザー名は見つかりませんでした。' : (${param.error[0] == 'friendSelf'} ? '自分自身は追加できません。' : 'すでに申請済み、またはフレンドです。')"></div>
+                    <div th:if="${param.friendRequestSent != null}" class="banner banner-success">フレンド申請を送りました！</div>
+                    <form th:action="@{/friends/request}" method="post" class="row-form">
+                        <input type="text" name="username" placeholder="相手のユーザー名を入力..." required>
+                        <button type="submit" class="btn-duo btn-secondary btn-sm">申請する</button>
+                    </form>
+                </div>
+
+                <div class="card-duo" th:if="${!incomingFriendRequests.isEmpty()}">
+                    <h3 style="color: var(--danger);"><svg class="icon icon-sm"><use href="/icons.svg#i-inbox"></use></svg> 届いている申請</h3>
+                    <div th:each="req : ${incomingFriendRequests}" class="record-item">
+                        <div class="record-title" th:text="${req.requester.username}"></div>
+                        <div class="row">
+                            <form th:action="@{/friends/accept/{id}(id=${req.id})}" method="post" class="mb-0">
+                                <button type="submit" class="btn-duo btn-primary btn-sm">承認</button>
+                            </form>
+                            <form th:action="@{/friends/remove/{id}(id=${req.id})}" method="post" class="mb-0">
+                                <button type="submit" class="btn-duo btn-outline btn-sm">拒否</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-duo" th:if="${!outgoingFriendRequests.isEmpty()}">
+                    <h3 style="color: var(--text-muted);"><svg class="icon icon-sm"><use href="/icons.svg#i-send"></use></svg> 申請中</h3>
+                    <div th:each="req : ${outgoingFriendRequests}" class="record-item">
+                        <div class="record-title" th:text="${req.addressee.username} + '（承認待ち）'"></div>
+                        <form th:action="@{/friends/remove/{id}(id=${req.id})}" method="post" class="mb-0">
+                            <button type="submit" class="btn-duo btn-danger btn-sm">取り消す</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="card-duo" th:if="${!cheersReceivedToday.isEmpty()}">
+                    <h3 style="color: var(--danger);"><svg class="icon icon-sm"><use href="/icons.svg#i-flame"></use></svg> 今日応援してくれた人</h3>
+                    <div class="row-wrap">
+                        <span th:each="c : ${cheersReceivedToday}" class="badge-pill">
+                            <svg class="icon icon-sm"><use href="/icons.svg#i-flame"></use></svg><span th:text="${c.fromUser.username}"></span>
+                        </span>
+                    </div>
+                </div>
+
+                <div class="card-duo">
+                    <h2><span class="icon-badge tint-purple"><svg class="icon"><use href="/icons.svg#i-trophy"></use></svg></span> 週間リーグ：<span th:text="${leagueTierName}"></span></h2>
+                    <p class="text-muted text-sm" style="margin-bottom: 15px;">
+                        毎週月曜に、同じ階層のユーザーの中で週間EXP上位30%が昇格、下位30%が降格します（<span th:text="${leagueTierIndex + 1}"></span>/<span th:text="${leagueTierCount}"></span>階層）。フレンドでなくても同じ階層の全員が対象です。
+                    </p>
+                    <div th:each="row, iter : ${leagueStandings}" class="record-item" th:classappend="${row.isSelf} ? 'is-self' : ''">
+                        <div class="row">
+                            <div class="record-rank" th:text="'#' + ${iter.count}"></div>
+                            <div class="record-title" th:text="${row.username} + (${row.isSelf} ? '（自分）' : '')"></div>
+                        </div>
+                        <div class="text-muted text-sm" style="font-weight: 700;" th:text="${row.weeklyExp} + ' EXP'"></div>
+                    </div>
+                    <div th:if="${leagueStandings.size() < 3}" class="text-muted text-sm mt-2">
+                        同じ階層のユーザーが少ないため、今週の昇格・降格はお休みです。
+                    </div>
+                </div>
+
+                <div class="card-duo">
+                    <h2><span class="icon-badge tint-gold"><svg class="icon"><use href="/icons.svg#i-award"></use></svg></span> リーダーボード</h2>
+                    <p class="text-muted text-sm" style="margin-bottom: 15px;">自分とフレンドをレベル順に並べています。「応援」は1人1日1回まで、応援された相手に+1EXPが入ります。</p>
+                    <div th:each="row, iter : ${friendLeaderboard}" class="record-item" th:classappend="${row.isSelf} ? 'is-self' : ''">
+                        <div class="row">
+                            <div class="record-rank" th:text="'#' + ${iter.count}"></div>
+                            <div>
+                                <div class="record-title row">
+                                    <span th:text="${row.username} + (${row.isSelf} ? '（自分）' : '')"></span>
+                                    <span th:if="${row.cheersReceivedToday} > 0" class="row" style="color: var(--danger);">
+                                        <svg class="icon icon-sm"><use href="/icons.svg#i-flame"></use></svg><span th:text="${row.cheersReceivedToday}"></span>
+                                    </span>
+                                </div>
+                                <div class="record-sub" th:text="'Lv.' + ${row.level} + '　連続' + ${row.streak} + '日'"></div>
+                            </div>
+                        </div>
+                        <form th:if="${!row.isSelf}" th:action="@{/friends/cheer/{id}(id=${row.userId})}" method="post" class="mb-0">
+                            <button type="submit" class="btn-duo btn-sm" th:disabled="${row.alreadyCheeredToday}"
+                                    th:classappend="${row.alreadyCheeredToday} ? 'btn-outline' : 'btn-danger'"
+                                    th:text="${row.alreadyCheeredToday} ? '応援済み' : '応援する'"></button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 設定タブ -->
+            <div id="settings-tab" class="tab-content">
+
+                <div class="card-duo">
+                    <h2><span class="icon-badge tint-gold"><svg class="icon"><use href="/icons.svg#i-palette"></use></svg></span> カラーテーマ解放（10レベルごと）</h2>
+                    <p class="text-muted text-sm" style="margin-bottom: 15px;">レベルを上げて新しいアプリのテーマカラーを解放しよう！</p>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <form th:each="opt : ${themeOptions}" th:action="@{/updateTheme}" method="post">
+                            <input type="hidden" name="theme" th:value="${opt.cssClass}">
+                            <button type="submit" class="theme-btn" th:attr="data-theme=${opt.cssClass}"
+                                    th:classappend="${level < opt.unlockLevel} ? ' locked' : (${currentTheme == opt.cssClass} ? ' selected' : '')"
+                                    th:disabled="${level < opt.unlockLevel}">
+                                <span class="theme-swatch"><span class="theme-swatch-dot dot1"></span><span class="theme-swatch-dot dot2"></span></span>
+                                <span th:text="${opt.emoji} + ' ' + ${opt.name}"></span><br>
+                                <span class="text-sm text-muted" style="font-weight: normal;"
+                                      th:text="${level >= opt.unlockLevel} ? '解放済み' : ('Lv.' + ${opt.unlockLevel} + 'で解放')"></span>
+                            </button>
+                        </form>
+                    </div>
+
+                    <hr class="divider">
+
+                    <h3 style="color: var(--purple);"><svg class="icon icon-sm"><use href="/icons.svg#i-image"></use></svg> 好きな画像を背景に（Lv<span th:text="${backgroundUnlockLevel}"></span>で解放）</h3>
+                    <div th:if="${level < backgroundUnlockLevel}" class="empty-state">
+                        <svg class="icon icon-xl"><use href="/icons.svg#i-lock"></use></svg>
+                        <p th:text="'Lv.' + ${backgroundUnlockLevel} + 'に到達すると、好きな画像をアプリの背景に設定できるようになります'"></p>
+                    </div>
+                    <div th:if="${level >= backgroundUnlockLevel}">
+                        <p class="text-muted text-sm">お気に入りの画像をアップロードすると、アプリ全体の背景に設定されます（JPEG/PNG、15MBまで）。</p>
+                        <div th:if="${param.error != null and #strings.startsWith(param.error[0], 'bg')}" class="banner banner-danger"
+                             th:text="${param.error[0] == 'bgTooLarge'} ? '画像サイズが大きすぎます（15MBまで）。写真アプリなどで縮小してから再度お試しください。' :
+                                      (${param.error[0] == 'bgTooLargeDimensions'} ? '画像の解像度が大きすぎます。写真アプリなどで縮小してから再度お試しください。' :
+                                      (${param.error[0] == 'bgInvalid'} ? '対応していない画像形式です。JPEGまたはPNG形式で保存し直してから再度お試しください（HEIC/WEBPは非対応です）。' :
+                                      (${param.error[0] == 'bgEmpty'} ? 'ファイルが選択されていません。画像を選んでください。' :
+                                      (${param.error[0] == 'bgLocked'} ? 'この機能はLv30で解放されます。' : 'アップロードに失敗しました。もう一度お試しください。'))))"></div>
+                        <form th:action="@{/uploadBackground}" method="post" enctype="multipart/form-data" class="row-wrap">
+                            <input type="file" name="image" accept="image/*" required style="flex: 1; min-width: 180px;">
+                            <button type="submit" class="btn-duo btn-purple btn-sm">背景に設定</button>
+                        </form>
+                        <form th:if="${currentTheme == 'custom'}" th:action="@{/updateTheme}" method="post" class="mt-2">
+                            <input type="hidden" name="theme" value="default">
+                            <button type="submit" class="btn-duo btn-outline btn-sm">デフォルトの背景に戻す</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="card-duo">
+                    <h2><span class="icon-badge tint-secondary"><svg class="icon"><use href="/icons.svg#i-key"></use></svg></span> アカウント（パスワード再設定用メール）</h2>
+                    <p class="text-muted text-sm">
+                        メールアドレスを登録しておくと、パスワードを忘れた際にログイン画面の「パスワードをお忘れですか？」から再設定できます。
+                    </p>
+                    <div th:if="${param.error != null and param.error[0] == 'emailTaken'}" class="banner banner-danger">
+                        そのメールアドレスは既に別のアカウントで使われています。
+                    </div>
+                    <form th:action="@{/updateEmail}" method="post" class="row-form">
+                        <input type="email" name="email" th:value="${userEmail}" placeholder="メールアドレス">
+                        <button type="submit" class="btn-duo btn-secondary btn-sm">更新</button>
+                    </form>
+                </div>
+
+                <div class="card-duo">
+                    <h2><span class="icon-badge tint-secondary"><svg class="icon"><use href="/icons.svg#i-settings"></use></svg></span> 目標・習慣の設定</h2>
+
+                    <h3 style="color: var(--gold-dark); margin-top: 18px;"><svg class="icon icon-sm"><use href="/icons.svg#i-target"></use></svg> 長期目標</h3>
+                    <form th:action="@{/updateGoal}" method="post" class="row-form">
+                        <input type="text" name="newGoal" th:value="${userGoal}" placeholder="長期目標を入力...">
+                        <button type="submit" class="btn-duo btn-gold btn-sm">更新</button>
+                    </form>
+
+                    <h3 style="color: var(--purple-dark); margin-top: 18px;"><svg class="icon icon-sm"><use href="/icons.svg#i-compass"></use></svg> なりたい自分（アイデンティティ宣言）</h3>
+                    <form th:action="@{/updateIdentity}" method="post" class="row-form">
+                        <input type="text" name="identityDeclaration" th:value="${identityDeclaration}" placeholder="なりたい自分を一言で...">
+                        <button type="submit" class="btn-duo btn-purple btn-sm">更新</button>
+                    </form>
+
+                    <hr class="divider">
+
+                    <h3 style="color: var(--secondary);"><svg class="icon icon-sm"><use href="/icons.svg#i-repeat"></use></svg> 朝の固定習慣</h3>
+                    <form th:action="@{/updateFixedHabits}" method="post" class="stack">
+                        <input type="text" name="habit1" th:value="${fixedHabit1}" placeholder="習慣1 (例: 白湯を飲む)">
+                        <input type="text" name="habit2" th:value="${fixedHabit2}" placeholder="習慣2 (例: 5分ストレッチ)">
+                        <input type="text" name="habit3" th:value="${fixedHabit3}" placeholder="習慣3 (例: 本を1ページ読む)">
+                        <input type="text" name="badHabit" th:value="${fixedBadHabit}" placeholder="やらない事 (例: お菓子を食べない)">
+                        <button type="submit" class="btn-duo btn-secondary" style="margin-top: 5px;">習慣・防御を保存</button>
+                    </form>
+                </div>
+
+                <div class="card-duo">
+                    <h2><span class="icon-badge"><svg class="icon"><use href="/icons.svg#i-bell"></use></svg></span> 通知設定</h2>
+                    <p class="text-muted text-sm">アプリからのリマインドの頻度を選べます。</p>
+                    <form th:action="@{/updateNotificationSettings}" method="post" class="row-wrap">
+                        <select name="notificationFrequency" style="flex: 1; min-width: 160px;">
+                            <option value="NORMAL" th:selected="${notificationFrequency == 'NORMAL'}">通常（1日2回まで）</option>
+                            <option value="LOW" th:selected="${notificationFrequency == 'LOW'}">控えめ（1日1回）</option>
+                            <option value="NONE" th:selected="${notificationFrequency == 'NONE'}">通知しない</option>
+                        </select>
+                        <button type="submit" class="btn-duo btn-outline btn-sm">保存</button>
+                    </form>
+
+                    <hr class="divider">
+
+                    <p class="text-muted text-sm" style="margin-bottom: 8px;">
+                        上の頻度設定を実際にブラウザへ届けるには、この端末での通知を許可してください（端末ごとに設定が必要です）。
+                    </p>
+                    <button type="button" id="pushEnableBtn" onclick="enablePushNotifications()" class="btn-duo btn-secondary btn-sm">
+                        <svg class="icon icon-sm"><use href="/icons.svg#i-bell"></use></svg> この端末で通知を有効にする
+                    </button>
+                    <p id="pushStatusText" class="text-muted text-sm mt-2"></p>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- JavaScript の魔法エリア -->
+    <!-- ============================================== -->
+    <script th:inline="javascript">
+
+        // --- 1. カレンダー機能（ヒートマップ化） ---
+        const activityMap = /*[[${activityMap}]]*/ {};
+        let streakFreezeRemaining = /*[[${streakFreezeRemaining}]]*/ 0;
+
+        function renderCalendar() {
+            const cal = document.getElementById('calendar');
+            cal.innerHTML = '';
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth();
+            const todayStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            document.getElementById('cal-month-title').innerText = `${year}年 ${month + 1}月`;
+
+            const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            days.forEach(d => cal.innerHTML += `<div class="cal-header">${d}</div>`);
+
+            const firstDay = new Date(year, month, 1).getDay();
+            const lastDate = new Date(year, month + 1, 0).getDate();
+
+            for (let i = 0; i < firstDay; i++) cal.innerHTML += `<div class="cal-day empty"></div>`;
+
+            for (let d = 1; d <= lastDate; d++) {
+                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+
+                const score = activityMap[dateStr] || 0;
+                let levelClass = '';
+                if (score >= 4) levelClass = 'level-4';
+                else if (score >= 3) levelClass = 'level-3';
+                else if (score >= 2) levelClass = 'level-2';
+                else if (score >= 1) levelClass = 'level-1';
+
+                // ★色がついていない過去の日だけ、お休みチケットでの後付けログインを受け付ける
+                const ticketEligible = score === 0 && dateStr < todayStr;
+                const cell = document.createElement('div');
+                cell.className = 'cal-day' + (levelClass ? ' ' + levelClass : '') + (ticketEligible ? ' ticket-eligible' : '');
+                cell.textContent = d;
+                if (ticketEligible) {
+                    cell.title = 'チケットを使ってこの日をログイン済みにする';
+                    cell.addEventListener('click', () => openTicketPopup(dateStr));
+                }
+                cal.appendChild(cell);
+            }
+        }
+
+        // --- 1b. お休みチケット使用ポップ ---
+        function openTicketPopup(dateStr) {
+            document.getElementById('ticketPopupDate').textContent = dateStr;
+            document.getElementById('ticketPopupDateInput').value = dateStr;
+            document.getElementById('ticketPopupRemaining').textContent = streakFreezeRemaining;
+            document.getElementById('ticketPopupUseBtn').disabled = streakFreezeRemaining <= 0;
+            document.getElementById('ticketPopup').style.display = 'flex';
+        }
+        function closeTicketPopup() {
+            document.getElementById('ticketPopup').style.display = 'none';
+        }
+
+        // --- 1c. 使い方ガイドポップ ---
+        function openHowToPopup() {
+            document.getElementById('howToPopup').style.display = 'flex';
+        }
+        function closeHowToPopup() {
+            document.getElementById('howToPopup').style.display = 'none';
+        }
+
+        // --- 2. グラフ描画機能 ---
+        function renderChart() {
+            const ctx = document.getElementById('myChart').getContext('2d');
+            const chartData = /*[[${chartData}]]*/ [30, 40, 50, 60, 40, 70, 80];
+
+            const style = getComputedStyle(document.body);
+            const primaryColor = style.getPropertyValue('--secondary').trim() || '#33455E';
+
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['6日前', '5日前', '4日前', '3日前', '2日前', '1日前', '今日'],
+                    datasets: [{
+                        label: 'EXP獲得量',
+                        data: chartData,
+                        borderColor: primaryColor,
+                        backgroundColor: primaryColor + '25',
+                        borderWidth: 2,
+                        pointRadius: 3,
+                        fill: true,
+                        tension: 0.35
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+            });
+        }
+
+        // --- 2b. 気分推移グラフ描画機能 ---
+        function renderMoodChart() {
+            const ctx = document.getElementById('moodChart').getContext('2d');
+            const moodLabels = /*[[${moodTrendLabels}]]*/ [];
+            const moodValues = /*[[${moodTrendValues}]]*/ [];
+
+            const style = getComputedStyle(document.body);
+            const goldColor = style.getPropertyValue('--gold-dark').trim() || '#856425';
+
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: moodLabels,
+                    datasets: [{
+                        label: '気分スコア',
+                        data: moodValues,
+                        borderColor: goldColor,
+                        backgroundColor: goldColor + '25',
+                        borderWidth: 2,
+                        pointRadius: 3,
+                        spanGaps: true,
+                        fill: true,
+                        tension: 0.35
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { min: 0, max: 5, ticks: { stepSize: 1 } } }
+                }
+            });
+        }
+
+        // --- 3. タブ切り替え機能（最後に開いていたタブをlocalStorageに記憶） ---
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabName + '-tab').classList.add('active');
+            document.querySelector('.tab-btn.' + tabName).classList.add('active');
+
+            if (tabName === 'night') {
+                document.body.classList.add('dark-mode');
+            } else {
+                document.body.classList.remove('dark-mode');
+            }
+
+            localStorage.setItem('lastActiveTab', tabName);
+        }
+
+        // ページ読み込み時、記憶していたタブがあれば復元する（毎回Morningに戻らないように）
+        function restoreLastTab() {
+            const savedTab = localStorage.getItem('lastActiveTab');
+            if (savedTab && document.getElementById(savedTab + '-tab')) {
+                switchTab(savedTab);
+            }
+        }
+
+        // --- 4. ポップアップを閉じる機能 ---
+        function closePopup() {
+            const popup = document.getElementById('welcomePopup');
+            if (popup) {
+                popup.style.opacity = '0';
+                setTimeout(() => popup.style.display = 'none', 150);
+            }
+            window.history.replaceState({}, document.title, "/");
+        }
+
+        function closeDamagePopup() {
+            const popup = document.getElementById('damagePopup');
+            if (popup) {
+                popup.style.opacity = '0';
+                setTimeout(() => popup.style.display = 'none', 150);
+            }
+            window.history.replaceState({}, document.title, "/");
+        }
+
+        function closeLevelUpPopup() {
+            const popup = document.getElementById('levelUpPopup');
+            if (popup) {
+                popup.style.opacity = '0';
+                setTimeout(() => popup.style.display = 'none', 150);
+            }
+            window.history.replaceState({}, document.title, "/");
+        }
+
+        // --- 過去の記録の詳細ポップアップ（textContentのみ使用しXSSを避ける） ---
+        function showTaskDetail(el) {
+            const d = el.dataset;
+            document.getElementById('detailPopupTitle').textContent = d.date;
+            const body = document.getElementById('detailPopupBody');
+            body.innerHTML = '';
+            [
+                { label: 'TODO 1', value: d.task1, done: d.task1done === 'true' },
+                { label: 'TODO 2', value: d.task2, done: d.task2done === 'true' },
+                { label: 'TODO 3', value: d.task3, done: d.task3done === 'true' },
+                { label: '防御', value: d.badhabit, done: d.badhabitdone === 'true' }
+            ].forEach(r => {
+                if (!r.value) return;
+                const p = document.createElement('p');
+                p.style.margin = '8px 0';
+                p.appendChild(document.createTextNode((r.done ? '✓ ' : '') + r.label + '： ' + r.value));
+                body.appendChild(p);
+            });
+            if (!body.hasChildNodes()) body.textContent = '記録がありません';
+            document.getElementById('detailPopup').style.display = 'flex';
+        }
+
+        function showJournalDetail(el) {
+            const d = el.dataset;
+            document.getElementById('detailPopupTitle').textContent = d.date;
+            const body = document.getElementById('detailPopupBody');
+            body.innerHTML = '';
+
+            const moodScore = parseInt(d.mood, 10) || 0;
+            const moodP = document.createElement('p');
+            moodP.style.margin = '8px 0';
+            moodP.textContent = '気分： ' + '★'.repeat(moodScore) + '☆'.repeat(5 - moodScore);
+            body.appendChild(moodP);
+
+            [
+                { label: '今日できたこと', value: d.achievement },
+                { label: '感謝1', value: d.gratitude1 },
+                { label: '感謝2', value: d.gratitude2 },
+                { label: '感謝3', value: d.gratitude3 },
+                { label: '今日のできごと', value: d.diary }
+            ].forEach(f => {
+                if (!f.value) return;
+                const p = document.createElement('p');
+                p.style.margin = '8px 0';
+                const strong = document.createElement('strong');
+                strong.textContent = f.label + '：';
+                p.appendChild(strong);
+                p.appendChild(document.createElement('br'));
+                p.appendChild(document.createTextNode(f.value));
+                body.appendChild(p);
+            });
+            if (d.photo) {
+                const img = document.createElement('img');
+                img.src = d.photo;
+                img.style.cssText = 'width:100%; max-height:320px; object-fit:cover; border-radius: var(--radius-sm); margin-top: 10px;';
+                body.appendChild(img);
+            }
+            document.getElementById('detailPopup').style.display = 'flex';
+        }
+
+        // --- 写真添付時のプレビュー表示 ---
+        function previewJournalPhoto(event) {
+            const file = event.target.files[0];
+            const preview = document.getElementById('journalPhotoPreview');
+            if (!file) { preview.style.display = 'none'; preview.src = ''; return; }
+            const reader = new FileReader();
+            reader.onload = e => { preview.src = e.target.result; preview.style.display = 'block'; };
+            reader.readAsDataURL(file);
+        }
+
+        function closeDetailPopup() {
+            document.getElementById('detailPopup').style.display = 'none';
+        }
+
+        // --- 5. 入力チェック機能 ---
+        function checkTask(event) {
+            const form = event.target;
+            const t1 = form.querySelector('[name="task1"]').value.trim();
+            const c1 = form.querySelector('[name="task1Done"]').checked;
+            const t2 = form.querySelector('[name="task2"]').value.trim();
+            const c2 = form.querySelector('[name="task2Done"]').checked;
+            const t3 = form.querySelector('[name="task3"]').value.trim();
+            const c3 = form.querySelector('[name="task3Done"]').checked;
+
+            if ((t1 && c1) || (t2 && c2) || (t3 && c3)) return true;
+            event.preventDefault();
+            document.getElementById('taskErrorText').style.display = 'flex';
+            return false;
+        }
+
+        function checkJournal(event) {
+            const form = event.target;
+            const a = form.querySelector('[name="achievement"]').value.trim();
+            const g1 = form.querySelector('[name="gratitude1"]').value.trim();
+            const g2 = form.querySelector('[name="gratitude2"]').value.trim();
+            const g3 = form.querySelector('[name="gratitude3"]').value.trim();
+            const d = form.querySelector('[name="diaryText"]').value.trim();
+            const mood = form.querySelector('[name="moodScore"]:checked');
+
+            if (a || g1 || g2 || g3 || d || mood) return true;
+            event.preventDefault();
+            document.getElementById('journalErrorText').style.display = 'flex';
+            return false;
+        }
+
+        // --- 6. プッシュ通知（Service Worker登録・購読） ---
+        function urlBase64ToUint8Array(base64String) {
+            const padding = '='.repeat((4 - base64String.length % 4) % 4);
+            const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+            const rawData = atob(base64);
+            const outputArray = new Uint8Array(rawData.length);
+            for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+            return outputArray;
+        }
+
+        function csrfHeaders() {
+            const token = document.querySelector('meta[name="_csrf"]').content;
+            const header = document.querySelector('meta[name="_csrf_header"]').content;
+            return { 'Content-Type': 'application/json', [header]: token };
+        }
+
+        async function enablePushNotifications() {
+            const statusEl = document.getElementById('pushStatusText');
+            if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+                statusEl.textContent = 'このブラウザはプッシュ通知に対応していません。';
+                return;
+            }
+            try {
+                const permission = await Notification.requestPermission();
+                if (permission !== 'granted') {
+                    statusEl.textContent = '通知が許可されませんでした。ブラウザの設定から許可してください。';
+                    return;
+                }
+                const registration = await navigator.serviceWorker.register('/sw.js');
+                const publicKeyRes = await fetch('/push/vapid-public-key');
+                const publicKey = await publicKeyRes.text();
+                const subscription = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlBase64ToUint8Array(publicKey)
+                });
+                await fetch('/push/subscribe', {
+                    method: 'POST',
+                    headers: csrfHeaders(),
+                    body: JSON.stringify(subscription)
+                });
+                statusEl.textContent = 'この端末での通知を有効にしました！';
+            } catch (e) {
+                statusEl.textContent = '通知の設定中にエラーが発生しました。';
+                console.error(e);
+            }
+        }
+
+        // ページ読み込み時、既に購読・許可済みならボタンの下に状態を表示しておく
+        async function reportPushStatus() {
+            const statusEl = document.getElementById('pushStatusText');
+            if (!statusEl || !('serviceWorker' in navigator) || !('PushManager' in window)) return;
+            if (Notification.permission !== 'granted') return;
+            try {
+                const registration = await navigator.serviceWorker.getRegistration('/sw.js');
+                const subscription = registration && await registration.pushManager.getSubscription();
+                if (subscription) statusEl.textContent = 'この端末では通知が有効になっています。';
+            } catch (e) { /* 何もしない */ }
+        }
+
+        // === 実行 ===
+        renderCalendar();
+        renderChart();
+        renderMoodChart();
+        restoreLastTab();
+        reportPushStatus();
+
+    </script>
+</body>
+</html>

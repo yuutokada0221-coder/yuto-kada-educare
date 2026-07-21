@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理者ダッシュボード - 目標達成RPG</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+    <div class="app-header">
+        <div class="header-content">
+            <h1><svg class="icon icon-lg"><use href="/icons.svg#i-tool"></use></svg> 管理者ダッシュボード</h1>
+            <div class="app-nav-links">
+                <a th:href="@{/}" class="nav-btn">アプリへ戻る</a>
+                <form th:action="@{/logout}" method="post" class="mb-0">
+                    <button type="submit" class="btn-duo btn-outline btn-sm">ログアウト</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="tab-buttons">
+            <a th:href="@{/admin(tab='kpi')}" class="tab-btn" th:classappend="${activeTab == 'kpi'} ? ' active' : ''" style="text-decoration:none;"><svg class="icon icon-sm"><use href="/icons.svg#i-trending-up"></use></svg> KPI</a>
+            <a th:href="@{/admin(tab='users')}" class="tab-btn" th:classappend="${activeTab == 'users'} ? ' active' : ''" style="text-decoration:none;"><svg class="icon icon-sm"><use href="/icons.svg#i-users"></use></svg> ユーザー</a>
+            <a th:href="@{/admin(tab='themes')}" class="tab-btn" th:classappend="${activeTab == 'themes'} ? ' active' : ''" style="text-decoration:none;"><svg class="icon icon-sm"><use href="/icons.svg#i-palette"></use></svg> テーマ</a>
+            <a th:href="@{/admin(tab='badges')}" class="tab-btn" th:classappend="${activeTab == 'badges'} ? ' active' : ''" style="text-decoration:none;"><svg class="icon icon-sm"><use href="/icons.svg#i-award"></use></svg> 実績</a>
+            <a th:href="@{/admin(tab='quests')}" class="tab-btn" th:classappend="${activeTab == 'quests'} ? ' active' : ''" style="text-decoration:none;"><svg class="icon icon-sm"><use href="/icons.svg#i-map"></use></svg> クエスト</a>
+        </div>
+
+        <!-- ============ KPI ============ -->
+        <div th:if="${activeTab == 'kpi'}">
+            <div class="card-duo">
+                <h2><span class="icon-badge tint-secondary"><svg class="icon"><use href="/icons.svg#i-trending-up"></use></svg></span> 継続率・利用状況</h2>
+                <div class="admin-kpi-grid">
+                    <div class="admin-kpi-card"><div class="kpi-value" th:text="${totalUsers}"></div><div class="kpi-label">総ユーザー数</div></div>
+                    <div class="admin-kpi-card"><div class="kpi-value" th:text="${d1Rate} + '%'"></div><div class="kpi-label">D1継続率</div></div>
+                    <div class="admin-kpi-card"><div class="kpi-value" th:text="${d7Rate} + '%'"></div><div class="kpi-label">D7継続率</div></div>
+                    <div class="admin-kpi-card"><div class="kpi-value" th:text="${d30Rate} + '%'"></div><div class="kpi-label">D30継続率</div></div>
+                    <div class="admin-kpi-card"><div class="kpi-value" th:text="${streakEstablishedRate} + '%'"></div><div class="kpi-label">ストリーク確立率(7日+)</div></div>
+                    <div class="admin-kpi-card"><div class="kpi-value" th:text="${totalTasks}"></div><div class="kpi-label">TODO記録件数</div></div>
+                    <div class="admin-kpi-card"><div class="kpi-value" th:text="${totalJournals}"></div><div class="kpi-label">ジャーナル記録件数</div></div>
+                </div>
+                <p class="text-muted text-sm mt-4">D1/D7/D30継続率は「登録からN日後の時点で、その日にログインしていたユーザーの割合」（要件設計書10章準拠）。まだN日経過していないユーザーは分母から除外しています。</p>
+            </div>
+        </div>
+
+        <!-- ============ ユーザー管理 ============ -->
+        <div th:if="${activeTab == 'users'}">
+            <div class="card-duo">
+                <h2><span class="icon-badge tint-secondary"><svg class="icon"><use href="/icons.svg#i-users"></use></svg></span> ユーザー一覧</h2>
+                <div style="overflow-x:auto;">
+                <table class="admin-table">
+                    <thead>
+                        <tr><th>ID</th><th>ユーザー名</th><th>権限</th><th>Lv</th><th>EXP</th><th>連続</th><th>累計</th><th>登録日</th><th>操作</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="uv : ${userViews}">
+                            <td th:text="${uv.user.id}"></td>
+                            <td th:text="${uv.user.username}"></td>
+                            <td>
+                                <span th:if="${uv.user.role == 'ADMIN'}" class="badge-pill">ADMIN</span>
+                                <span th:if="${uv.user.role != 'ADMIN'}" class="text-muted">USER</span>
+                            </td>
+                            <td th:text="${uv.level}"></td>
+                            <td th:text="${uv.user.exp}"></td>
+                            <td th:text="${uv.streak}"></td>
+                            <td th:text="${uv.cumulativeDays}"></td>
+                            <td th:text="${uv.user.createdAt}"></td>
+                            <td class="row-wrap">
+                                <form th:if="${uv.user.id != currentAdminId}" th:action="@{/admin/users/{id}/role(id=${uv.user.id})}" method="post" class="mb-0">
+                                    <input type="hidden" name="role" th:value="${uv.user.role == 'ADMIN'} ? 'USER' : 'ADMIN'">
+                                    <button type="submit" class="btn-duo btn-outline btn-sm" th:text="${uv.user.role == 'ADMIN'} ? '管理者解除' : '管理者にする'"></button>
+                                </form>
+                                <form th:if="${uv.user.id != currentAdminId}" th:action="@{/admin/users/{id}/delete(id=${uv.user.id})}" method="post" class="mb-0" onsubmit="return confirm('このユーザーを削除しますか？関連する記録も全て削除されます。');">
+                                    <button type="submit" class="btn-duo btn-danger btn-sm">削除</button>
+                                </form>
+                                <span th:if="${uv.user.id == currentAdminId}" class="text-muted text-sm">(自分)</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============ テーマ管理 ============ -->
+        <div th:if="${activeTab == 'themes'}">
+            <div class="card-duo">
+                <h2><span class="icon-badge tint-gold"><svg class="icon"><use href="/icons.svg#i-palette"></use></svg></span> テーマ追加</h2>
+                <form th:action="@{/admin/themes/add}" method="post">
+                    <label class="field-label">テーマ名</label>
+                    <input type="text" name="name" placeholder="例：ミッドナイトブルー" required>
+                    <label class="field-label">絵文字アイコン</label>
+                    <input type="text" name="emoji" placeholder="例：🌌" required>
+                    <label class="field-label">CSSクラス名（bodyに付与）</label>
+                    <input type="text" name="cssClass" placeholder="例：theme-midnight" required>
+                    <label class="field-label">解放レベル</label>
+                    <input type="text" name="unlockLevel" placeholder="例：8" required>
+                    <button type="submit" class="btn-duo btn-primary">追加する</button>
+                </form>
+            </div>
+            <div class="card-duo">
+                <h3>登録済みテーマ</h3>
+                <div style="overflow-x:auto;">
+                <table class="admin-table">
+                    <thead><tr><th>アイコン</th><th>名前</th><th>CSSクラス</th><th>解放Lv</th><th>状態</th><th>操作</th></tr></thead>
+                    <tbody>
+                        <tr th:each="t : ${themes}">
+                            <td th:text="${t.emoji}"></td>
+                            <td th:text="${t.name}"></td>
+                            <td th:text="${t.cssClass}"></td>
+                            <td th:text="${t.unlockLevel}"></td>
+                            <td th:text="${t.active} ? '公開中' : '非公開'"></td>
+                            <td class="row">
+                                <form th:action="@{/admin/themes/{id}/toggle(id=${t.id})}" method="post" class="mb-0">
+                                    <button type="submit" class="btn-duo btn-outline btn-sm" th:text="${t.active} ? '非公開にする' : '公開する'"></button>
+                                </form>
+                                <form th:action="@{/admin/themes/{id}/delete(id=${t.id})}" method="post" class="mb-0" onsubmit="return confirm('削除しますか？');">
+                                    <button type="submit" class="btn-duo btn-danger btn-sm">削除</button>
+                                </form>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============ 実績管理 ============ -->
+        <div th:if="${activeTab == 'badges'}">
+            <div class="card-duo">
+                <h2><span class="icon-badge tint-gold"><svg class="icon"><use href="/icons.svg#i-award"></use></svg></span> 実績追加</h2>
+                <form th:action="@{/admin/badges/add}" method="post">
+                    <label class="field-label">実績名</label>
+                    <input type="text" name="name" placeholder="例：早起きマスター" required>
+                    <label class="field-label">アイコン絵文字</label>
+                    <input type="text" name="icon" placeholder="例：🌅" required>
+                    <label class="field-label">説明</label>
+                    <input type="text" name="description" placeholder="例：レベル5に到達">
+                    <label class="field-label">達成条件の種類</label>
+                    <select name="conditionType">
+                        <option th:each="ct : ${badgeConditionTypes}" th:value="${ct}" th:text="${ct}"></option>
+                    </select>
+                    <label class="field-label">達成に必要な数値</label>
+                    <input type="text" name="conditionValue" placeholder="例：5" required>
+                    <button type="submit" class="btn-duo btn-primary">追加する</button>
+                </form>
+            </div>
+            <div class="card-duo">
+                <h3>登録済み実績</h3>
+                <div style="overflow-x:auto;">
+                <table class="admin-table">
+                    <thead><tr><th>アイコン</th><th>名前</th><th>条件</th><th>数値</th><th>状態</th><th>操作</th></tr></thead>
+                    <tbody>
+                        <tr th:each="b : ${badges}">
+                            <td th:text="${b.icon}"></td>
+                            <td th:text="${b.name}"></td>
+                            <td th:text="${b.conditionType}"></td>
+                            <td th:text="${b.conditionValue}"></td>
+                            <td th:text="${b.active} ? '公開中' : '非公開'"></td>
+                            <td class="row">
+                                <form th:action="@{/admin/badges/{id}/toggle(id=${b.id})}" method="post" class="mb-0">
+                                    <button type="submit" class="btn-duo btn-outline btn-sm" th:text="${b.active} ? '非公開にする' : '公開する'"></button>
+                                </form>
+                                <form th:action="@{/admin/badges/{id}/delete(id=${b.id})}" method="post" class="mb-0" onsubmit="return confirm('削除しますか？');">
+                                    <button type="submit" class="btn-duo btn-danger btn-sm">削除</button>
+                                </form>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============ クエスト管理 ============ -->
+        <div th:if="${activeTab == 'quests'}">
+            <div class="card-duo">
+                <h2><span class="icon-badge tint-primary"><svg class="icon"><use href="/icons.svg#i-map"></use></svg></span> クエスト追加</h2>
+                <form th:action="@{/admin/quests/add}" method="post">
+                    <label class="field-label">タイトル</label>
+                    <input type="text" name="title" placeholder="例：今日のTODOを3つ達成" required>
+                    <label class="field-label">説明</label>
+                    <input type="text" name="description" placeholder="例：TODOを3つ完了する">
+                    <label class="field-label">アイコン絵文字</label>
+                    <input type="text" name="icon" placeholder="例：⚔️">
+                    <label class="field-label">期間</label>
+                    <select name="period">
+                        <option th:each="p : ${questPeriods}" th:value="${p}" th:text="${p}"></option>
+                    </select>
+                    <label class="field-label">達成条件の種類</label>
+                    <select name="conditionType">
+                        <option th:each="ct : ${questConditionTypes}" th:value="${ct}" th:text="${ct}"></option>
+                    </select>
+                    <label class="field-label">目標数</label>
+                    <input type="text" name="targetCount" placeholder="例：3" required>
+                    <label class="field-label">報酬EXP</label>
+                    <input type="text" name="rewardExp" placeholder="例：20" required>
+                    <button type="submit" class="btn-duo btn-primary">追加する</button>
+                </form>
+            </div>
+            <div class="card-duo">
+                <h3>登録済みクエスト</h3>
+                <div style="overflow-x:auto;">
+                <table class="admin-table">
+                    <thead><tr><th>アイコン</th><th>タイトル</th><th>期間</th><th>条件</th><th>目標</th><th>報酬</th><th>状態</th><th>操作</th></tr></thead>
+                    <tbody>
+                        <tr th:each="q : ${quests}">
+                            <td th:text="${q.icon}"></td>
+                            <td th:text="${q.title}"></td>
+                            <td th:text="${q.period}"></td>
+                            <td th:text="${q.conditionType}"></td>
+                            <td th:text="${q.targetCount}"></td>
+                            <td th:text="${q.rewardExp} + ' EXP'"></td>
+                            <td th:text="${q.active} ? '公開中' : '非公開'"></td>
+                            <td class="row">
+                                <form th:action="@{/admin/quests/{id}/toggle(id=${q.id})}" method="post" class="mb-0">
+                                    <button type="submit" class="btn-duo btn-outline btn-sm" th:text="${q.active} ? '非公開にする' : '公開する'"></button>
+                                </form>
+                                <form th:action="@{/admin/quests/{id}/delete(id=${q.id})}" method="post" class="mb-0" onsubmit="return confirm('削除しますか？');">
+                                    <button type="submit" class="btn-duo btn-danger btn-sm">削除</button>
+                                </form>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

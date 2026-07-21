@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>新規登録 - 目標達成RPG</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+    <div class="auth-wrap">
+        <div class="auth-card">
+            <h1><svg class="icon icon-lg"><use href="/icons.svg#i-mark"></use></svg></h1>
+            <h2>冒険を始めよう</h2>
+            <p class="text-muted text-sm mt-1 mb-0">目標達成RPGへようこそ</p>
+
+            <div th:if="${error}" class="auth-error mt-4" th:text="${error}"></div>
+
+            <form th:action="@{/register}" th:object="${userForm}" method="post" class="mt-4">
+                <input type="text" th:field="*{username}" placeholder="好きなユーザー名" required>
+                <input type="password" th:field="*{password}" placeholder="パスワード（英数字含む8文字以上）" required minlength="8">
+                <button type="submit" class="btn-duo btn-primary">登録して始める</button>
+            </form>
+
+            <a href="/login" class="auth-link">ログイン画面に戻る</a>
+        </div>
+    </div>
+</body>
+</html>

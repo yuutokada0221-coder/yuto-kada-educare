@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>はじめに - 目標達成RPG</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <style>
+        .onboard-progress { width: 100%; background: var(--surface-2); border: 1px solid var(--border); border-radius: 20px; height: 6px; overflow: hidden; margin-bottom: 24px; }
+        .onboard-progress-fill { height: 100%; background: var(--accent); width: 50%; transition: width 0.3s ease; border-radius: 20px; }
+        .onboard-step { display: none; }
+        .onboard-step.active { display: block; animation: fadeUp 0.2s ease forwards; }
+        .onboard-step-label { font-size: 0.78em; color: var(--text-muted); font-weight: 700; margin-bottom: 4px; letter-spacing: 0.03em; }
+    </style>
+</head>
+<body>
+    <div class="auth-wrap">
+        <div class="auth-card" style="max-width: 420px;">
+            <div class="onboard-progress"><div class="onboard-progress-fill" id="onboardProgressFill"></div></div>
+
+            <form th:action="@{/onboarding/complete}" method="post" id="onboardForm">
+                <!-- STEP 1: アイデンティティ宣言 -->
+                <div class="onboard-step active" id="step1">
+                    <span class="icon-badge tint-purple"><svg class="icon"><use href="/icons.svg#i-compass"></use></svg></span>
+                    <div class="onboard-step-label mt-3">STEP 1 / 2</div>
+                    <h2 class="mt-1">なりたい自分は？</h2>
+                    <p class="text-muted text-sm mt-1 mb-0">一言で宣言してみましょう（例：早起きできる自分）</p>
+                    <input type="text" id="identityInput" name="identityDeclaration" placeholder="なりたい自分を一言で" required class="mt-3">
+                    <p id="step1Error" class="row text-sm mt-2" style="color: var(--danger); font-weight: 700; display:none;">
+                        <svg class="icon icon-sm"><use href="/icons.svg#i-alert"></use></svg> 入力してください
+                    </p>
+                    <button type="button" class="btn-duo btn-primary" onclick="goToStep2()">次へ</button>
+                </div>
+
+                <!-- STEP 2: 最初のTODO -->
+                <div class="onboard-step" id="step2">
+                    <span class="icon-badge tint-gold"><svg class="icon"><use href="/icons.svg#i-target"></use></svg></span>
+                    <div class="onboard-step-label mt-3">STEP 2 / 2</div>
+                    <h2 class="mt-1">最初の一歩を決めよう</h2>
+                    <p class="text-muted text-sm mt-1 mb-0">今日から続けたいことを1つだけ入力してください</p>
+                    <input type="text" id="firstTodoInput" name="firstTodo" placeholder="例：白湯を飲む" required class="mt-3">
+                    <p id="step2Error" class="row text-sm mt-2" style="color: var(--danger); font-weight: 700; display:none;">
+                        <svg class="icon icon-sm"><use href="/icons.svg#i-alert"></use></svg> 入力してください
+                    </p>
+                    <button type="submit" class="btn-duo btn-gold">はじめる（+5 EXP）</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function goToStep2() {
+            const input = document.getElementById('identityInput');
+            if (!input.value.trim()) {
+                document.getElementById('step1Error').style.display = 'flex';
+                return;
+            }
+            document.getElementById('step1').classList.remove('active');
+            document.getElementById('step2').classList.add('active');
+            document.getElementById('onboardProgressFill').style.width = '100%';
+        }
+
+        document.getElementById('onboardForm').addEventListener('submit', function (event) {
+            const firstTodo = document.getElementById('firstTodoInput');
+            if (!firstTodo.value.trim()) {
+                event.preventDefault();
+                document.getElementById('step2Error').style.display = 'flex';
+            }
+        });
+    </script>
+</body>
+</html>

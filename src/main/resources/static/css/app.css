@@ -1,0 +1,586 @@
+/* ==========================================================================
+   目標達成RPG - デザインシステム
+   温かみのある紙×深紺のパレットを基調に、装飾を最小限に抑えた落ち着いたUI。
+   絵文字ではなく専用のSVGアイコン(fragments/icons.html)を使い、
+   反復するスタイルはユーティリティクラスに寄せてテンプレート側のinline styleを排除する。
+   ========================================================================== */
+
+:root {
+    --bg: #F3F0E7;
+    --surface: #FFFFFF;
+    --surface-2: #F6F3EA;
+    --surface-3: #ECE7D8;
+    --border: #E2DDCC;
+    --border-strong: #CFC7AC;
+
+    --text: #201D18;
+    --text-body: #46423A;
+    --text-muted: #7A7568;
+    --text-faint: #A39C89;
+
+    --primary: #96702A;       /* アンティークゴールド：主要アクション */
+    --primary-dark: #7A5A20;
+    --primary-tint: #F1E6CD;
+    --secondary: #33455E;     /* ディープネイビー：副次アクション */
+    --secondary-dark: #24303F;
+    --secondary-tint: #E1E5EA;
+    --gold: #A9822F;
+    --gold-dark: #856425;
+    --gold-tint: #F1E6CD;
+    --danger: #93433B;
+    --danger-dark: #74332D;
+    --danger-tint: #EDDCD9;
+    --purple: #5F5077;
+    --purple-dark: #453A59;
+    --purple-tint: #E3DEEA;
+
+    --radius-sm: 8px;
+    --radius: 11px;
+    --radius-lg: 14px;
+    --radius-pill: 999px;
+
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-8: 32px;
+
+    --text-xs: 0.75rem;
+    --text-sm: 0.85rem;
+    --text-base: 0.95rem;
+    --text-md: 1.05rem;
+    --text-lg: 1.15rem;
+    --text-xl: 1.4rem;
+    --text-2xl: 1.9rem;
+
+    --shadow-xs: 0 1px 2px rgba(20, 16, 8, 0.06);
+    --shadow-sm: 0 1px 3px rgba(20, 16, 8, 0.07), 0 1px 2px rgba(20, 16, 8, 0.04);
+    --shadow-md: 0 4px 14px rgba(20, 16, 8, 0.08);
+    --shadow-lg: 0 10px 30px rgba(15, 12, 6, 0.14);
+
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+    --font: 'Inter', 'Noto Sans JP', sans-serif;
+    --font-display: 'Cinzel', 'Inter', 'Noto Sans JP', serif;
+
+    --accent: var(--gold-dark);
+}
+
+/* ★サクラ／フォレストはレベル10・20で解放される「ごほうびテーマ」。
+   デフォルトより一段濃く自信のある配色にして、解放した甲斐を感じられるようにする
+   （とはいえ絵文字の花びらやアニメーションのようなAI感の出る装飾には頼らない）。 */
+body.theme-sakura {
+    --primary: #B23A63; --primary-dark: #8B2C4D; --primary-tint: #F6DCE6;
+    --secondary: #C97B3E; --secondary-dark: #A15F2C; --secondary-tint: #F5E3D0;
+    --bg: #F7E9EE; --accent: var(--primary-dark);
+}
+body.theme-forest {
+    --primary: #2E6B3F; --primary-dark: #1F4C2C; --primary-tint: #D9EEDD;
+    --secondary: #B08A3A; --secondary-dark: #8C6C2A; --secondary-tint: #F1E7CC;
+    --bg: #E7F0E2; --accent: var(--primary-dark);
+}
+body.theme-sakura.dark-mode {
+    --bg: #1D1518; --surface: #251A1F; --surface-2: #2C2025; --surface-3: #362830;
+    --border: #422F38; --border-strong: #573F4A;
+    --text: #F5E4EA; --text-body: #DBC4CD; --text-muted: #A38C95; --text-faint: #705E66;
+    --primary: #E594AC; --primary-dark: #C0748D; --primary-tint: rgba(229,148,172,0.16);
+    --secondary: #DDA85F; --secondary-dark: #B5853F; --secondary-tint: rgba(221,168,95,0.16);
+    --accent: var(--primary);
+}
+body.theme-forest.dark-mode {
+    --bg: #101A13; --surface: #17221A; --surface-2: #1D2B22; --surface-3: #25382B;
+    --border: #2C3F31; --border-strong: #3B5241;
+    --text: #E9F2E4; --text-body: #C9D6C5; --text-muted: #8FA189; --text-faint: #5C6A5A;
+    --primary: #8ECB95; --primary-dark: #67A56E; --primary-tint: rgba(142,203,149,0.16);
+    --secondary: #D6B565; --secondary-dark: #AE8F45; --secondary-tint: rgba(214,181,101,0.16);
+    --accent: var(--primary);
+}
+
+body.dark-mode {
+    --bg: #10161F; --surface: #171F2B; --surface-2: #1E2734; --surface-3: #263141;
+    --border: #2A3444; --border-strong: #3A4658;
+    --text: #EDE7D9; --text-body: #C6CBD6; --text-muted: #8790A0; --text-faint: #5A6376;
+
+    --primary: #C6A254; --primary-dark: #A6863F; --primary-tint: rgba(198,162,84,0.14);
+    --secondary: #6E8FAE; --secondary-dark: #52708D; --secondary-tint: rgba(110,143,174,0.14);
+    --gold: #CBAA5C; --gold-dark: #A98A45; --gold-tint: rgba(203,170,92,0.14);
+    --danger: #B5716A; --danger-dark: #935650; --danger-tint: rgba(181,113,106,0.14);
+    --purple: #8E7FAE; --purple-dark: #6E6089; --purple-tint: rgba(142,127,174,0.14);
+}
+
+* { box-sizing: border-box; }
+
+body {
+    font-family: var(--font);
+    background-color: var(--bg);
+    /* ★静的な二色のグラデーションだけの、控えめな「気配」。テーマ色から自動で導かれるので、
+       サクラ／フォレストを選ぶとページ全体の空気がふわっと変わる（アニメーションや挿絵には頼らない）。 */
+    background-image:
+        radial-gradient(1100px circle at 12% -12%, color-mix(in srgb, var(--primary) 13%, transparent), transparent 60%),
+        radial-gradient(1000px circle at 100% -6%, color-mix(in srgb, var(--secondary) 10%, transparent), transparent 55%);
+    background-attachment: fixed;
+    color: var(--text-body);
+    margin: 0;
+    padding: 0;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+body.custom-bg { background-size: cover; background-position: center; background-attachment: fixed; }
+body.custom-bg::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: color-mix(in srgb, var(--bg) 62%, transparent);
+    z-index: -1;
+}
+
+h1, h2, h3 { font-weight: 700; letter-spacing: 0.1px; color: var(--text); }
+h2 { font-size: var(--text-lg); }
+h3 { font-size: var(--text-md); }
+a { color: var(--secondary); }
+
+::selection { background: var(--gold-tint); color: var(--text); }
+
+*:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--secondary) 60%, transparent);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+.history-area::-webkit-scrollbar { width: 6px; }
+.history-area::-webkit-scrollbar-track { background: transparent; }
+.history-area::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 10px; }
+
+/* ---------------- アイコン ---------------- */
+.icon { width: 18px; height: 18px; flex-shrink: 0; display: inline-block; vertical-align: -3px; }
+.icon-sm { width: 14px; height: 14px; vertical-align: -2px; }
+.icon-lg { width: 26px; height: 26px; }
+.icon-xl { width: 40px; height: 40px; }
+
+/* カード見出しなどの、アイコンを軽く囲うバッジ */
+.icon-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; min-width: 30px;
+    border-radius: 8px;
+    background: var(--surface-2);
+    color: var(--text-muted);
+}
+.icon-badge .icon { width: 16px; height: 16px; vertical-align: 0; }
+.icon-badge.tint-primary { background: var(--primary-tint); color: var(--primary-dark); }
+.icon-badge.tint-secondary { background: var(--secondary-tint); color: var(--secondary-dark); }
+.icon-badge.tint-gold { background: var(--gold-tint); color: var(--gold-dark); }
+.icon-badge.tint-danger { background: var(--danger-tint); color: var(--danger-dark); }
+.icon-badge.tint-purple { background: var(--purple-tint); color: var(--purple-dark); }
+
+/* ---------------- レイアウト ---------------- */
+.app-header {
+    background: color-mix(in srgb, var(--surface) 92%, transparent);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+    padding: var(--space-3) var(--space-5);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+.app-header .header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 1120px;
+    margin: 0 auto;
+}
+.app-header h1 {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: var(--text-lg);
+    font-weight: 600;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+.app-header h1 .icon { color: var(--accent); }
+.app-nav-links { display: flex; gap: var(--space-2); align-items: center; }
+.app-nav-links a.nav-btn {
+    color: var(--text-body); background: var(--surface-2); font-weight: 600; text-decoration: none; font-size: var(--text-sm);
+    padding: 8px var(--space-3); border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+    display: inline-flex; align-items: center; gap: 6px;
+}
+.app-nav-links a.nav-btn:hover { background: var(--surface-3); border-color: var(--border-strong); }
+
+.container { max-width: 1120px; margin: var(--space-6) auto; padding: 0 var(--space-4); }
+.main-layout { display: grid; grid-template-columns: 320px 1fr; gap: var(--space-5); align-items: start; }
+@media (max-width: 768px) { .main-layout { grid-template-columns: 1fr; } }
+
+/* ---------------- カード ---------------- */
+.card-duo {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4) var(--space-5) var(--space-5);
+    margin-bottom: var(--space-4);
+    box-shadow: var(--shadow-xs);
+}
+.card-duo h2, .card-duo h3 {
+    margin-top: 0;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
+}
+.card-duo.accent-left { border-left: 3px solid var(--accent); }
+.card-duo.accent-left.purple { border-left-color: var(--purple); }
+
+/* ---------------- タブ ---------------- */
+.tab-buttons { display: flex; background: var(--surface-2); padding: 4px; border-radius: 10px; margin-bottom: var(--space-4); gap: 2px; border: 1px solid var(--border); overflow-x: auto; }
+.tab-btn {
+    flex: 1; padding: 9px 8px; font-size: var(--text-sm); font-weight: 600; border: none;
+    background: transparent; color: var(--text-muted); cursor: pointer; white-space: nowrap;
+    border-radius: 7px; transition: background-color 0.15s ease, color 0.15s ease; font-family: inherit;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px; position: relative;
+}
+.tab-btn:hover { color: var(--text); }
+.tab-btn.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow-xs); }
+.tab-btn .badge-dot {
+    position: absolute; top: 3px; right: 6px; background: var(--danger); color: #fff;
+    border-radius: 50%; width: 15px; height: 15px; font-size: 0.62em; font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+}
+.tab-content { display: none; }
+.tab-content.active { display: block; animation: fadeUp 0.2s var(--ease-out) forwards; }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ---------------- ボタン ---------------- */
+.btn-duo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    width: 100%;
+    text-align: center;
+    border: 1px solid transparent;
+    padding: 11px 16px;
+    border-radius: var(--radius-sm);
+    font-size: var(--text-base);
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: var(--space-3);
+    font-family: inherit;
+    transition: background-color 0.12s ease, border-color 0.12s ease, opacity 0.12s ease;
+}
+.btn-duo:active { opacity: 0.82; }
+
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:hover { background: var(--primary-dark); }
+.btn-secondary { background: var(--secondary); color: #fff; }
+.btn-secondary:hover { background: var(--secondary-dark); }
+.btn-gold { background: var(--gold); color: #fff; }
+.btn-gold:hover { background: var(--gold-dark); }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-danger:hover { background: var(--danger-dark); }
+.btn-purple { background: var(--purple); color: #fff; }
+.btn-purple:hover { background: var(--purple-dark); }
+.btn-outline {
+    background: var(--surface); color: var(--text-body); border-color: var(--border-strong);
+}
+.btn-outline:hover { background: var(--surface-2); border-color: var(--text-faint); }
+.btn-duo:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.btn-sm { width: auto; padding: 6px 13px; font-size: var(--text-sm); margin-top: 0; }
+
+/* ---------------- フォーム ---------------- */
+input[type="text"], input[type="password"], input[type="email"], input[type="file"], textarea, select {
+    width: 100%;
+    padding: 11px 12px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    box-sizing: border-box;
+    margin-top: 6px;
+    font-size: var(--text-base);
+    font-family: inherit;
+    background: var(--surface);
+    color: var(--text);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+input:focus, textarea:focus, select:focus {
+    outline: none;
+    border-color: var(--secondary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--secondary) 14%, transparent);
+}
+label.field-label { font-weight: 600; font-size: var(--text-sm); color: var(--text-muted); display: block; margin-top: var(--space-3); }
+input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer; flex-shrink: 0; }
+
+/* ---------------- EXPバー・レベル ---------------- */
+.exp-container { width: 100%; background: var(--surface-2); border-radius: 20px; height: 8px; margin-top: 6px; overflow: hidden; border: 1px solid var(--border); }
+.exp-bar { height: 100%; background: var(--accent); width: 0%; transition: width 0.6s var(--ease-out); border-radius: 20px; }
+.level-badge { font-family: var(--font-display); color: var(--accent); font-size: var(--text-lg); font-weight: 600; }
+
+/* ---------------- ストリーク ---------------- */
+.streak-number { font-family: var(--font-display); font-size: 2.2em; font-weight: 600; color: var(--accent); }
+.stat-mini { text-align: center; }
+.stat-mini .stat-value { font-size: var(--text-lg); font-weight: 700; color: var(--text); display: inline-flex; align-items: center; gap: 4px; }
+.stat-mini .stat-label { font-size: var(--text-xs); color: var(--text-muted); }
+
+/* ---------------- カレンダー ---------------- */
+.calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-top: var(--space-3); }
+.cal-header { font-weight: 600; color: var(--text-faint); font-size: var(--text-xs); text-align: center; padding-bottom: 4px; }
+.cal-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; background: var(--surface-2); border-radius: 6px; font-size: var(--text-sm); color: var(--text-body); font-weight: 500; }
+.cal-day.level-1 { background-color: color-mix(in srgb, var(--gold) 25%, var(--surface-2)); }
+.cal-day.level-2 { background-color: color-mix(in srgb, var(--gold) 48%, var(--surface-2)); color: #fff; }
+.cal-day.level-3 { background-color: color-mix(in srgb, var(--gold) 72%, var(--surface-2)); color: #fff; }
+.cal-day.level-4 { background-color: var(--gold); color: #fff; }
+.cal-day.empty { background: transparent; }
+.cal-day.ticket-eligible { cursor: pointer; box-shadow: inset 0 0 0 1px var(--border-strong); }
+.cal-day.ticket-eligible:hover { box-shadow: inset 0 0 0 1px var(--secondary); background: var(--secondary-tint); color: var(--secondary-dark); }
+
+/* ---------------- 気分トラッカー（星） ---------------- */
+.star-picker { display: flex; flex-direction: row-reverse; justify-content: flex-end; gap: 4px; margin: 8px 0 4px; }
+.star-picker input { display: none; }
+.star-picker label .icon { width: 26px; height: 26px; cursor: pointer; color: var(--border-strong); transition: color 0.12s; }
+.star-picker input:checked ~ label .icon { color: var(--gold); }
+.star-picker label:hover .icon,
+.star-picker label:hover ~ label .icon { color: var(--gold); }
+
+/* ---------------- モンスター戦闘 ---------------- */
+.monster-arena { text-align: center; padding: var(--space-3) 0 var(--space-1); }
+.monster-sprite {
+    font-size: 3.6em; display: inline-block; transition: transform 0.25s ease, opacity 0.25s ease;
+    filter: drop-shadow(0 6px 8px rgba(20, 16, 8, 0.16)) saturate(0.75);
+}
+.monster-sprite:not(.defeated) { animation: monsterIdle 2.4s ease-in-out infinite; }
+@keyframes monsterIdle { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+.monster-sprite.hit { animation: monsterHit 0.3s ease; }
+.monster-sprite.defeated { opacity: 0.15; transform: scale(0.6); animation: none; }
+@keyframes monsterHit {
+    0% { transform: translateX(0); }
+    25% { transform: translateX(-6px); }
+    50% { transform: translateX(6px); }
+    75% { transform: translateX(-3px); }
+    100% { transform: translateX(0); }
+}
+.monster-hp-bar { width: 100%; max-width: 240px; margin: var(--space-2) auto 0; background: var(--surface-2); border: 1px solid var(--border); border-radius: 20px; height: 8px; overflow: hidden; }
+.monster-hp-fill { height: 100%; background: var(--danger); transition: width 0.4s ease; }
+.monster-defeated-banner { color: var(--primary-dark); font-weight: 700; margin-top: var(--space-2); }
+
+/* ---------------- クエスト／実績 ---------------- */
+.quest-item { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: var(--space-2); background: var(--surface-2); }
+.quest-item.completed { border-color: color-mix(in srgb, var(--primary) 45%, var(--border)); background: color-mix(in srgb, var(--primary) 6%, var(--surface-2)); }
+.quest-icon { font-size: 1.35em; filter: saturate(0.8); flex-shrink: 0; }
+.quest-icon.dim { filter: grayscale(1) opacity(0.45); }
+.quest-body { flex: 1; min-width: 0; }
+.quest-title { font-weight: 600; font-size: var(--text-base); }
+.quest-progress-bar { width: 100%; background: var(--border); border-radius: 20px; height: 6px; margin-top: 6px; overflow: hidden; }
+.quest-progress-fill { height: 100%; background: var(--purple); border-radius: 20px; transition: width 0.4s ease; }
+.quest-reward { font-size: var(--text-xs); color: var(--gold-dark); font-weight: 700; white-space: nowrap; }
+.quest-status { text-align: center; font-size: 0.82em; font-weight: 600; }
+.quest-status.earned { color: var(--primary-dark); }
+
+/* ---------------- バッジ ---------------- */
+.badge-pill { display: inline-flex; align-items: center; gap: 5px; background: var(--surface-2); color: var(--text-body); padding: 5px 11px; border-radius: var(--radius-pill); font-weight: 600; font-size: var(--text-sm); border: 1px solid var(--border); }
+.badge-pill .icon { color: var(--gold-dark); }
+
+/* ---------------- 履歴・一覧行 ---------------- */
+.history-area { max-height: 280px; overflow-y: auto; padding-right: 6px; margin-top: var(--space-3); }
+.record-item { background: var(--surface-2); border: 1px solid var(--border); padding: var(--space-3) var(--space-4); margin-bottom: var(--space-2); border-radius: var(--radius); display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); }
+.record-item.is-self { border-color: color-mix(in srgb, var(--accent) 50%, var(--border)); background: color-mix(in srgb, var(--accent) 7%, var(--surface-2)); }
+.record-rank { font-family: var(--font-display); font-weight: 600; color: var(--text-muted); min-width: 22px; }
+.record-title { font-weight: 700; color: var(--text); }
+.record-sub { color: var(--text-muted); font-size: var(--text-xs); margin-top: 2px; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+
+.empty-state { text-align: center; padding: var(--space-5) var(--space-4); color: var(--text-muted); }
+.empty-state .icon { color: var(--text-faint); margin-bottom: var(--space-2); }
+.empty-state p { margin: 0; font-size: var(--text-sm); }
+
+/* ---------------- バナー（通知・エラー） ---------------- */
+.banner { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: var(--text-sm); padding: 10px 13px; border-radius: var(--radius-sm); margin-bottom: var(--space-3); border: 1px solid transparent; }
+.banner .icon { flex-shrink: 0; }
+.banner-danger { background: var(--danger-tint); color: var(--danger-dark); }
+.banner-success { background: var(--secondary-tint); color: var(--secondary-dark); }
+.banner-neutral { background: var(--surface-2); color: var(--text-body); border-color: var(--border); }
+
+/* ---------------- ポップアップ ---------------- */
+.popup-overlay { position: fixed; inset: 0; background: rgba(10, 12, 16, 0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; padding: 16px; }
+.popup-content { background: var(--surface); padding: var(--space-6) var(--space-5); border-radius: var(--radius-lg); text-align: center; box-shadow: var(--shadow-lg); max-width: 320px; width: 100%; border: 1px solid var(--border); animation: popIn 0.18s var(--ease-out) forwards; }
+.popup-content.popup-wide { max-width: 460px; text-align: left; }
+@keyframes popIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ---------------- レベルアップ演出 ----------------
+   他の落ち着いたポップアップとは意図的にトーンを変え、ここだけ大きく・弾む動きと紙吹雪で
+   「やった」感を出す。動きを使う場面をここ一箇所に絞ることで、乱発による安っぽさを避ける。 */
+.level-up-overlay { background: rgba(8, 6, 4, 0.72); animation: levelUpFlash 0.5s ease-out forwards; }
+.level-up-content {
+    position: relative; overflow: visible;
+    max-width: 400px; padding: 44px 32px 36px;
+    animation: levelUpPopIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+.level-up-rays {
+    position: absolute; top: 50%; left: 50%; width: 720px; height: 720px; z-index: -3;
+    transform: translate(-50%, -50%); pointer-events: none; border-radius: 50%;
+    background: repeating-conic-gradient(from 0deg,
+        color-mix(in srgb, var(--accent) 20%, transparent) 0deg 5deg,
+        transparent 5deg 17deg);
+    opacity: 0;
+    animation: levelUpRaysFade 0.7s ease-out 0.05s forwards, levelUpRaysSpin 16s linear infinite;
+}
+.level-up-burst {
+    position: absolute; inset: -34%; z-index: -2; border-radius: 50%;
+    background: radial-gradient(circle, color-mix(in srgb, var(--accent) 55%, transparent) 0%, transparent 70%);
+    animation: levelUpBurst 1s ease-out forwards;
+}
+.level-up-sparkle {
+    position: absolute; z-index: -1; color: var(--gold); opacity: 0;
+    animation: levelUpSparkleTwinkle 1.8s ease-in-out infinite;
+    animation-delay: var(--sd, 0s);
+}
+.level-up-sparkle .icon { width: var(--ss, 14px); height: var(--ss, 14px); }
+.level-up-kicker {
+    font-family: var(--font-display); font-weight: 700; letter-spacing: 0.32em; font-size: 0.95em;
+    color: var(--accent); margin: 0; opacity: 0;
+    animation: levelUpFadeUp 0.4s ease-out 0.15s forwards;
+}
+.level-up-figure {
+    margin: 16px auto 4px; width: 74px; height: 74px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: color-mix(in srgb, var(--accent) 18%, var(--surface));
+    box-shadow: 0 0 0 7px color-mix(in srgb, var(--accent) 12%, transparent), 0 0 34px color-mix(in srgb, var(--accent) 40%, transparent);
+    opacity: 0; transform: scale(0.4);
+    animation: levelUpFigureIn 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) 0.12s forwards;
+}
+.level-up-figure .icon { width: 36px; height: 36px; color: var(--accent); }
+.level-up-number {
+    font-family: var(--font-display); font-size: 7rem; font-weight: 700; line-height: 1;
+    color: var(--accent); margin: 10px 0 4px;
+    text-shadow: 0 0 40px color-mix(in srgb, var(--accent) 55%, transparent), 0 0 80px color-mix(in srgb, var(--accent) 30%, transparent);
+    opacity: 0; transform: scale(0.3);
+    animation: levelUpNumberIn 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s forwards,
+               levelUpNumberPulse 1.7s ease-in-out 0.9s infinite;
+}
+.level-up-sub {
+    color: var(--text-muted); font-weight: 700; font-size: 1.05em; margin: 0; opacity: 0;
+    animation: levelUpFadeUp 0.4s ease-out 0.4s forwards;
+}
+.level-up-content .btn-duo { opacity: 0; animation: levelUpFadeUp 0.4s ease-out 0.5s forwards; }
+.level-up-confetti { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
+.level-up-confetti span {
+    position: absolute; top: 50%; left: 50%; width: 8px; height: 13px; border-radius: 2px;
+    background: var(--accent); animation: confettiBurst 1.15s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+    animation-delay: var(--d, 0s);
+}
+.level-up-confetti span.round { border-radius: 50%; width: 9px; height: 9px; }
+.level-up-confetti span:nth-child(4n) { background: var(--gold); }
+.level-up-confetti span:nth-child(4n+1) { background: var(--secondary); }
+.level-up-confetti span:nth-child(4n+2) { background: var(--primary); }
+
+@keyframes levelUpFlash {
+    0% { background: rgba(255, 255, 255, 0.4); }
+    100% { background: rgba(8, 6, 4, 0.72); }
+}
+@keyframes levelUpPopIn {
+    0% { opacity: 0; transform: scale(0.35) translateY(30px); }
+    55% { opacity: 1; transform: scale(1.08) translateY(-4px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes levelUpRaysFade { from { opacity: 0; } to { opacity: 0.8; } }
+@keyframes levelUpRaysSpin {
+    from { transform: translate(-50%, -50%) rotate(0deg); }
+    to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+@keyframes levelUpBurst {
+    0% { opacity: 0.8; transform: scale(0.25); }
+    100% { opacity: 0; transform: scale(1.7); }
+}
+@keyframes levelUpSparkleTwinkle {
+    0%, 100% { opacity: 0; transform: scale(0.5) rotate(0deg); }
+    50% { opacity: 1; transform: scale(1.15) rotate(15deg); }
+}
+@keyframes levelUpFadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+@keyframes levelUpFigureIn {
+    to { opacity: 1; transform: scale(1); }
+}
+@keyframes levelUpNumberIn {
+    to { opacity: 1; transform: scale(1); }
+}
+@keyframes levelUpNumberPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.06); }
+}
+@keyframes confettiBurst {
+    0% { opacity: 1; transform: translate(-50%, -50%) translate(0, 0) rotate(0deg); }
+    100% { opacity: 0; transform: translate(-50%, -50%) translate(var(--tx), var(--ty)) rotate(var(--rot)); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .level-up-overlay, .level-up-content, .level-up-rays, .level-up-burst, .level-up-sparkle,
+    .level-up-kicker, .level-up-figure, .level-up-number, .level-up-sub, .level-up-content .btn-duo,
+    .level-up-confetti span {
+        animation: none; opacity: 1; transform: none;
+    }
+}
+
+/* ---------------- テーマ選択 ---------------- */
+.theme-btn { border: 1px solid var(--border-strong); background: var(--surface); padding: var(--space-3); border-radius: var(--radius); cursor: pointer; text-align: center; font-weight: 600; width: 100%; color: var(--text); transition: border-color 0.12s ease, background-color 0.12s ease; }
+.theme-btn:not(.locked):not(:disabled):hover { border-color: var(--accent); }
+.theme-btn.locked { background: var(--surface-2); color: var(--text-muted); cursor: not-allowed; }
+.theme-btn.selected { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--surface)); }
+
+/* ★どのテーマを選ぶとどんな色になるか一目でわかるよう、ボタンに実際の配色をスウォッチで見せる。
+   解放前のロック済みボタンはあえて彩度を落とし、解放後の「開いた」瞬間の差を感じられるようにする。 */
+.theme-swatch { display: flex; gap: 5px; justify-content: center; margin-bottom: 9px; }
+.theme-swatch-dot { width: 16px; height: 16px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.1); box-shadow: inset 0 0 0 2px rgba(255,255,255,0.35); }
+.theme-btn.locked .theme-swatch-dot { filter: grayscale(0.7) opacity(0.6); }
+.theme-btn[data-theme="default"] .theme-swatch-dot.dot1 { background: #96702A; }
+.theme-btn[data-theme="default"] .theme-swatch-dot.dot2 { background: #33455E; }
+.theme-btn[data-theme="theme-sakura"] .theme-swatch-dot.dot1 { background: #B23A63; }
+.theme-btn[data-theme="theme-sakura"] .theme-swatch-dot.dot2 { background: #C97B3E; }
+.theme-btn[data-theme="theme-forest"] .theme-swatch-dot.dot1 { background: #2E6B3F; }
+.theme-btn[data-theme="theme-forest"] .theme-swatch-dot.dot2 { background: #B08A3A; }
+
+/* ---------------- 管理画面共通 ---------------- */
+.admin-table { width: 100%; border-collapse: collapse; margin-top: var(--space-3); }
+.admin-table th, .admin-table td { text-align: left; padding: 9px 11px; border-bottom: 1px solid var(--border); font-size: var(--text-base); }
+.admin-table tr:hover td { background: var(--surface-2); }
+.admin-table th { color: var(--text-muted); font-weight: 600; font-size: var(--text-sm); }
+.admin-kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--space-3); }
+.admin-kpi-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: var(--space-4); text-align: center; }
+.admin-kpi-card .kpi-value { font-family: var(--font-display); font-size: 1.6em; font-weight: 600; color: var(--secondary); }
+.admin-kpi-card .kpi-label { font-size: var(--text-xs); color: var(--text-muted); margin-top: 4px; }
+
+/* ---------------- 認証画面（login/register/onboarding） ---------------- */
+.auth-wrap { min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px; }
+.auth-card { background: var(--surface); padding: var(--space-8) var(--space-6); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); width: 100%; max-width: 380px; text-align: center; border: 1px solid var(--border); }
+.auth-card h1 { font-family: var(--font-display); font-weight: 600; font-size: var(--text-xl); color: var(--text); margin: 0 0 4px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.auth-card h1 .icon { color: var(--accent); }
+.auth-card h2 { font-weight: 600; color: var(--text-muted); font-size: var(--text-base); margin-top: 0; }
+.auth-link { margin-top: var(--space-4); display: block; color: var(--secondary); text-decoration: none; font-weight: 600; font-size: var(--text-sm); }
+.auth-error { color: var(--danger); font-weight: 600; margin-bottom: var(--space-2); font-size: var(--text-sm); }
+.auth-success { color: var(--primary-dark); font-weight: 600; margin-bottom: var(--space-2); font-size: var(--text-sm); }
+
+/* ---------------- ユーティリティ ---------------- */
+.text-muted { color: var(--text-muted); }
+.text-faint { color: var(--text-faint); }
+.text-sm { font-size: var(--text-sm); }
+.text-xs { font-size: var(--text-xs); }
+.text-center { text-align: center; }
+hr.divider { border: 0; border-top: 1px solid var(--border); margin: var(--space-5) 0; }
+
+.row { display: flex; align-items: center; gap: var(--space-2); }
+.row-wrap { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.row-between { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.row-form { display: flex; gap: var(--space-2); }
+.row-form input, .row-form select { margin-top: 0; }
+.stack { display: flex; flex-direction: column; gap: var(--space-2); }
+.stat-row { display: flex; justify-content: space-around; padding-top: var(--space-3); border-top: 1px solid var(--border); }
+
+.mt-1 { margin-top: var(--space-1); } .mt-2 { margin-top: var(--space-2); } .mt-3 { margin-top: var(--space-3); }
+.mt-4 { margin-top: var(--space-4); } .mt-5 { margin-top: var(--space-5); }
+.mb-0 { margin-bottom: 0; }
