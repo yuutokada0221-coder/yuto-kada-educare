@@ -1,0 +1,84 @@
+問題1
+SQL文
+SELECT title, publication_year
+FROM books
+WHERE author = '田中 一郎';
+
+出力結果
+   title   | publication_year
+-----------+------------------
+ 過去のSQL | 1999
+ 現在のSQL | 2005
+(2 行)
+
+問題2
+データを追加するSQL文
+INSERT INTO books (title, author, publication_year, genre)
+VALUES ('SQLの応用', '鈴木 三郎', 2019, '技術書');
+
+追加したデータを取得するSQL文
+SELECT title, author, publication_year, genre
+FROM books
+WHERE title = 'SQLの応用';
+
+出力結果
+   title    |   author   | publication_year |  genre  
+------------+------------+------------------+---------
+ SQLの応用  | 鈴木 三郎  |             2019 | 技術書 
+(1 行)
+
+問題3
+データを削除するSQL文
+DELETE FROM books
+WHERE author = '山田 花子';
+
+削除後のテーブルの情報を取得するSQL文
+SELECT title, author, publication_year, genre
+FROM books;
+
+出力結果
+       title        |   author   | publication_year |  genre  
+--------------------+------------+------------------+---------
+ 未来のSQL          | 田中 太郎  |             2023 | 技術書 
+ 過去のSQL          | 田中 一郎  |             1999 | 技術書 
+ 現在のSQL          | 田中 一郎  |             2005 | 小説   
+ SQLの基礎          | 佐藤 次郎  |             2001 | 技術書 
+ 恋するデータベース | 高橋 美香  |             2015 | 小説   
+ プログラマーの恋   | 森田 健一  |             2020 | 小説   
+(6 行)
+（...上部には問題1〜3の回答が書かれています...）
+
+問題4
+データを更新するSQL文
+UPDATE books
+SET title = 'SQL入門'
+WHERE title = '未来のSQL';
+
+変更後の情報を取得するSQL文
+SELECT title, author, publication_year, genre
+FROM books
+WHERE title = 'SQL入門';
+
+出力結果
+   title   |   author   | publication_year |  genre  
+-----------+------------+------------------+---------
+ SQL入門   | 田中 太郎  |             2023 | 技術書 
+(1 行)
+
+
+問題5
+条件指定と並び替えを行うSQL文
+SELECT title, author, publication_year, genre
+FROM books
+WHERE publication_year >= 2000
+ AND genre = '小説'
+ORDER BY publication_year DESC;
+
+出力結果
+       title        |   author   | publication_year |  genre  
+--------------------+------------+------------------+---------
+ プログラマーの恋   | 森田 健一  |             2020 | 小説   
+ 恋するデータベース | 高橋 美香  |             2015 | 小説   
+ SQLの冒険          | 山田 花子  |             2010 | 小説   
+ 現在のSQL          | 田中 一郎  |             2005 | 小説   
+(4 行)
