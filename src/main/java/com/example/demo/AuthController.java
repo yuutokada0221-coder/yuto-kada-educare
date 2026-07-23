@@ -36,15 +36,24 @@ public class AuthController {
 
     @PostMapping("/register")
     public String registerUser(@ModelAttribute UserAccount userForm, Model model, HttpServletRequest request) {
+        // ★register.htmlはth:object="${userForm}"でフォームバインドしているため、
+        // 再表示する全てのパターンで"userForm"をmodelに積み直す必要がある（@ModelAttributeの暗黙キーは
+        // クラス名から決まる"userAccount"であり"userForm"にはならず、積み忘れるとThymeleafが
+        // th:field解決時にIllegalStateExceptionを投げて500→エラーページ経由でログイン画面に
+        // リダイレクトされてしまい、エラーメッセージがユーザーに一切見えなくなる）
         String clientIp = request.getRemoteAddr();
         if (registrationAttemptService.isRateLimited(clientIp)) {
             model.addAttribute("error", "アカウント登録の試行回数が多すぎます。しばらく時間をおいてから再度お試しください。");
+            userForm.setPassword(""); // ★ユーザー名は残しつつ、入力し直したパスワードがHTMLソースに平文で残らないようにする
+            model.addAttribute("userForm", userForm);
             return "register";
         }
 
         // ★レスキュー：もし同じ名前の人がいたら、エラー画面にならずに登録画面に戻す
         if (userRepository.findByUsername(userForm.getUsername()) != null) {
             model.addAttribute("error", "その名前はすでに使われています！別の名前にしてください。");
+            userForm.setPassword(""); // ★ユーザー名は残しつつ、入力し直したパスワードがHTMLソースに平文で残らないようにする
+            model.addAttribute("userForm", userForm);
             return "register";
         }
 
@@ -52,6 +61,8 @@ public class AuthController {
         String passwordError = PasswordPolicy.validate(userForm.getPassword());
         if (passwordError != null) {
             model.addAttribute("error", passwordError);
+            userForm.setPassword(""); // ★ユーザー名は残しつつ、入力し直したパスワードがHTMLソースに平文で残らないようにする
+            model.addAttribute("userForm", userForm);
             return "register";
         }
 

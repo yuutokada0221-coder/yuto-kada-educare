@@ -113,6 +113,16 @@ class HomeControllerIntegrationTest {
         return userRepository.findByUsername(username).getExp();
     }
 
+    /** ★今日のアクション：チェックを入れた瞬間に1項目ずつ即時保存されるtoggleTaskItemを叩くヘルパー */
+    private org.springframework.test.web.servlet.ResultActions postToggleTaskItem(Ctx ctx, String slot, String text) throws Exception {
+        String json = "{\"slot\":\"" + slot + "\",\"text\":\"" + text + "\"}";
+        return mockMvc.perform(post("/toggleTaskItem")
+                .session(ctx.session)
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content(json)
+                .header(ctx.csrf.getHeaderName(), ctx.csrf.getToken()));
+    }
+
     // ---------------- テスト本体 ----------------
 
     @Test
@@ -138,17 +148,12 @@ class HomeControllerIntegrationTest {
         MockHttpSession session = registerAndLogin("test_todo2", "password123");
         Ctx ctx = fetchCtx("/", session);
 
-        mockMvc.perform(post("/saveTask")
-                        .session(ctx.session)
-                        .param("task1", "読書")
-                        .param("task1Done", "true")
-                        .param("task2", "運動")
-                        .param("task2Done", "true")
-                        .param("task3", "掃除")
-                        .param("task3Done", "false")
-                        .param(ctx.csrf.getParameterName(), ctx.csrf.getToken()))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/?damage=2"));
+        postToggleTaskItem(ctx, "task1", "読書")
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("\"damage\":1")));
+        postToggleTaskItem(ctx, "task2", "運動")
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("\"damage\":1")));
 
         // +1はfetchCtx()内のGET "/"で本日初回訪問のログインボーナスが入るため（+2はTODO2件分）
         assertThat(expOf("test_todo2")).isEqualTo(3);
@@ -159,17 +164,17 @@ class HomeControllerIntegrationTest {
         MockHttpSession session = registerAndLogin("test_boss_full", "password123");
         Ctx ctx = fetchCtx("/", session);
 
-        mockMvc.perform(post("/saveTask")
-                        .session(ctx.session)
-                        .param("task1", "読書").param("task1Done", "true")
-                        .param("task2", "運動").param("task2Done", "true")
-                        .param("task3", "掃除").param("task3Done", "true")
-                        .param(ctx.csrf.getParameterName(), ctx.csrf.getToken()))
-                .andExpect(redirectedUrl("/?damage=3"));
+        postToggleTaskItem(ctx, "task1", "読書").andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("\"monsterDefeated\":false")));
+        postToggleTaskItem(ctx, "task2", "運動").andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("\"monsterDefeated\":false")));
+        // ★1体目（HP3）はちょうど3つ目のTODOで撃破される
+        postToggleTaskItem(ctx, "task3", "掃除").andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("\"monsterDefeated\":true")));
 
-        mockMvc.perform(get("/").session(session).param("damage", "3"))
-                .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("モンスターを撃破した")));
+        UserAccount after = userRepository.findByUsername("test_boss_full");
+        assertThat(after.getMonsterTier()).isEqualTo(2);
+        assertThat(after.getMonsterDamageAccumulated()).isEqualTo(0);
     }
 
     @Test
@@ -177,17 +182,58 @@ class HomeControllerIntegrationTest {
         MockHttpSession session = registerAndLogin("test_boss_partial", "password123");
         Ctx ctx = fetchCtx("/", session);
 
-        mockMvc.perform(post("/saveTask")
-                        .session(ctx.session)
-                        .param("task1", "読書").param("task1Done", "true")
-                        .param("task2", "運動").param("task2Done", "true")
-                        .param("task3", "掃除").param("task3Done", "false")
-                        .param(ctx.csrf.getParameterName(), ctx.csrf.getToken()))
-                .andExpect(redirectedUrl("/?damage=2"));
+        postToggleTaskItem(ctx, "task1", "読書").andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("\"monsterDefeated\":false")));
+        postToggleTaskItem(ctx, "task2", "運動").andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("\"monsterDefeated\":false")));
 
-        mockMvc.perform(get("/").session(session).param("damage", "2"))
-                .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("モンスターを撃破した"))));
+        UserAccount after = userRepository.findByUsername("test_boss_partial");
+        assertThat(after.getMonsterTier()).isEqualTo(1);
+        assertThat(after.getMonsterDamageAccumulated()).isEqualTo(2);
+    }
+
+    @Test
+    void defeatingBoss_nextBossHasDoubleHp() throws Exception {
+        MockHttpSession session = registerAndLogin("test_boss_tier", "password123");
+        Ctx ctx = fetchCtx("/", session);
+
+        // ★2体目（HP6）と戦っている途中（あと1で撃破）という状態を直接作る。
+        // toggleTaskItemは項目単位で1日1回ずつしか呼べないため、複数日にまたがる進行はDBを直接操作して再現する。
+        UserAccount user = userRepository.findByUsername("test_boss_tier");
+        user.setMonsterTier(2);
+        user.setMonsterDamageAccumulated(5);
+        userRepository.save(user);
+
+        postToggleTaskItem(ctx, "task1", "読書").andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("\"monsterDefeated\":true")));
+
+        UserAccount after = userRepository.findByUsername("test_boss_tier");
+        assertThat(after.getMonsterTier()).isEqualTo(3);
+        assertThat(after.getMonsterDamageAccumulated()).isEqualTo(0);
+    }
+
+    @Test
+    void defeatingBoss_carriesOverflowDamageToNextTier() throws Exception {
+        MockHttpSession session = registerAndLogin("test_boss_overflow", "password123");
+        Ctx ctx = fetchCtx("/", session);
+
+        // ★2体目（HP6）に5ダメージ与え済みの状態で、さらに3項目（task1〜3）を1つずつ完了していくと
+        // 1つ目でちょうど6に達して撃破、残り2つ分のダメージが3体目（HP12）にそのまま持ち越されるはず
+        UserAccount user = userRepository.findByUsername("test_boss_overflow");
+        user.setMonsterTier(2);
+        user.setMonsterDamageAccumulated(5);
+        userRepository.save(user);
+
+        postToggleTaskItem(ctx, "task1", "読書").andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("\"monsterDefeated\":true")));
+        postToggleTaskItem(ctx, "task2", "運動").andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("\"monsterDefeated\":false")));
+        postToggleTaskItem(ctx, "task3", "掃除").andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("\"monsterDefeated\":false")));
+
+        UserAccount after = userRepository.findByUsername("test_boss_overflow");
+        assertThat(after.getMonsterTier()).isEqualTo(3);
+        assertThat(after.getMonsterDamageAccumulated()).isEqualTo(2);
     }
 
     @Test
@@ -270,10 +316,7 @@ class HomeControllerIntegrationTest {
                 .orElseThrow(() -> new IllegalStateException("DataSeederが投入するはずのデイリークエストが見つからない"));
 
         Ctx taskCtx = fetchCtx("/", session);
-        mockMvc.perform(post("/saveTask")
-                .session(taskCtx.session)
-                .param("task1", "読書").param("task1Done", "true")
-                .param(taskCtx.csrf.getParameterName(), taskCtx.csrf.getToken()));
+        postToggleTaskItem(taskCtx, "task1", "読書");
 
         int expAfterTask = expOf("test_quest");
 
@@ -307,16 +350,12 @@ class HomeControllerIntegrationTest {
         userRepository.save(user); // さらにTODO2件分+2で合計5となり、ちょうどレベル2の境界をまたぐ
 
         Ctx taskCtx = fetchCtx("/", session);
-        MvcResult result = mockMvc.perform(post("/saveTask")
-                        .session(taskCtx.session)
-                        .param("task1", "読書").param("task1Done", "true")
-                        .param("task2", "散歩").param("task2Done", "true")
-                        .param(taskCtx.csrf.getParameterName(), taskCtx.csrf.getToken()))
-                .andExpect(status().is3xxRedirection())
-                .andReturn();
+        postToggleTaskItem(taskCtx, "task1", "読書").andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("\"levelUp\":null")));
+        postToggleTaskItem(taskCtx, "task2", "散歩").andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("\"levelUp\":2")));
 
         assertThat(expOf("test_levelup")).isEqualTo(5);
-        assertThat(result.getResponse().getRedirectedUrl()).contains("levelUp=2");
     }
 
     // ★同じ理由の逆側：レベル境界をまたがない範囲でのEXP獲得ではlevelUpパラメータが付かないことを確認する
@@ -328,15 +367,10 @@ class HomeControllerIntegrationTest {
         userRepository.save(user);
 
         Ctx taskCtx = fetchCtx("/", session);
-        MvcResult result = mockMvc.perform(post("/saveTask")
-                        .session(taskCtx.session)
-                        .param("task1", "読書").param("task1Done", "true")
-                        .param(taskCtx.csrf.getParameterName(), taskCtx.csrf.getToken()))
-                .andExpect(status().is3xxRedirection())
-                .andReturn();
+        postToggleTaskItem(taskCtx, "task1", "読書").andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("\"levelUp\":null")));
 
         assertThat(expOf("test_nolevelup")).isEqualTo(2);
-        assertThat(result.getResponse().getRedirectedUrl()).doesNotContain("levelUp");
     }
 
     // ★過去に発見・修正したバグの回帰テスト：パスワードリセットに成功した後、

@@ -39,6 +39,16 @@ public class DailyTask {
     private String badHabit;
     private boolean badHabitDone;
 
+    // ★追加：達成率の分母を日をまたいでも保持するためのスナップショット。
+    // 新方式ではチェックしなかった項目はDBに一切残らないため、「その日は3つ入力欄があったが1つしか
+    // チェックしなかった」という事実を後から復元できない。そこでチェックするたびに
+    // 「固定習慣の非空数」と「その時点でのチェック済み数」の大きい方を記録しておき、
+    // 日が変わって過去の記録として集計される時もその日の本来の分母をそのまま使えるようにする。
+    // 未設定（過去のレコード等）の場合はnullのまま——集計側でフォールバック計算する。
+    private Integer inputCount;
+    public Integer getInputCount() { return inputCount; }
+    public void setInputCount(Integer inputCount) { this.inputCount = inputCount; }
+
     // ★一番下に追加
     public String getBadHabit() { return badHabit; }
     public void setBadHabit(String badHabit) { this.badHabit = badHabit; }

@@ -1,0 +1,56 @@
+databases:
+  - name: habit-app-db
+    plan: free
+    databaseName: habit_app
+    user: habit_app_user
+
+services:
+  - type: web
+    name: habit-app
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /actuator/health
+    envVars:
+      # ★DBの接続情報はRenderが払い出すPostgresから自動で埋め込まれる（手入力不要）
+      - key: DB_HOST
+        fromDatabase:
+          name: habit-app-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: habit-app-db
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: habit-app-db
+          property: database
+      - key: DB_USERNAME
+        fromDatabase:
+          name: habit-app-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: habit-app-db
+          property: password
+
+      # ★以下はGroq（OpenAI互換API）用。ベースURL/モデル名は非機密なのでここに直書きし、
+      # APIキーだけRenderのダッシュボードで手動設定する（sync: falseの項目）
+      - key: OPENAI_API_BASE_URL
+        value: https://api.groq.com/openai/v1
+      - key: OPENAI_API_MODEL
+        value: llama-3.3-70b-versatile
+      - key: OPENAI_API_KEY
+        sync: false
+
+      # ★プッシュ通知用のVAPID鍵。ローカルの値をそのままRenderダッシュボードで手動設定する
+      - key: PUSH_VAPID_PUBLIC_KEY
+        sync: false
+      - key: PUSH_VAPID_PRIVATE_KEY
+        sync: false
+      - key: PUSH_VAPID_SUBJECT
+        sync: false
+
+      # ★デプロイ後に確定するRenderのURL（https://xxxxx.onrender.com）を手動で設定する
+      - key: APP_BASE_URL
+        sync: false

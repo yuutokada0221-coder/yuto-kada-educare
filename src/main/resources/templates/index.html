@@ -38,7 +38,7 @@
          他のポップアップは落ち着いた演出にとどめている分、ここだけは弾む動きと紙吹雪で差をつける。
          ダメージポップアップより先にDOMへ置くことで、両方同時に発生した時はダメージ→レベルアップの順で見え、
          地味な戦闘結果の後に一番テンションの上がる瞬間が来るようにしている。 -->
-    <div th:if="${levelUpTo != null}" id="levelUpPopup" class="popup-overlay level-up-overlay">
+    <div id="levelUpPopup" class="popup-overlay level-up-overlay" th:style="${levelUpTo != null} ? 'display:flex;' : 'display:none;'">
         <div class="popup-content level-up-content">
             <div class="level-up-rays" aria-hidden="true"></div>
             <div class="level-up-burst" aria-hidden="true"></div>
@@ -69,18 +69,18 @@
             </div>
             <p class="level-up-kicker">LEVEL UP</p>
             <div class="level-up-figure"><svg class="icon"><use href="/icons.svg#i-mark"></use></svg></div>
-            <div class="level-up-number" th:text="${levelUpTo}"></div>
-            <p class="level-up-sub">ここまで積み上げてきた成果です</p>
+            <div class="level-up-number" id="levelUpNumber" th:text="${levelUpTo}"></div>
+            <p class="level-up-sub" id="levelUpSub">ここまで積み上げてきた成果です</p>
             <button onclick="closeLevelUpPopup()" class="btn-duo btn-gold" style="margin-top: 18px;">つづける</button>
         </div>
     </div>
 
-    <div th:if="${damageDealt != null}" id="damagePopup" class="popup-overlay">
+    <div id="damagePopup" class="popup-overlay" style="display:none;">
         <div class="popup-content">
             <span class="icon-badge tint-danger" style="margin-bottom: 8px;"><svg class="icon"><use href="/icons.svg#i-zap"></use></svg></span>
             <h2 style="color: var(--danger); margin: 6px 0;">ダメージ</h2>
-            <p style="font-weight: 600; font-size: 1.05em;">ボスに <span th:text="${damageDealt}"></span> ダメージを与えた</p>
-            <p th:if="${monsterDefeated}" class="monster-defeated-banner">モンスターを撃破した！</p>
+            <p style="font-weight: 600; font-size: 1.05em;">ボスに <span id="damageDealtAmount"></span> ダメージを与えた</p>
+            <p id="monsterJustDefeatedMsg" class="monster-defeated-banner" style="display:none;">モンスターを撃破した！次のモンスターはさらに手強いぞ</p>
             <button onclick="closeDamagePopup()" class="btn-duo btn-danger" style="margin-top: 14px;">よし！</button>
         </div>
     </div>
@@ -109,6 +109,17 @@
         </div>
     </div>
 
+    <!-- ★今日のアクション・夜のジャーナルは登録後に変更・削除ができないため、送信前に必ず最終確認を挟む -->
+    <div id="confirmSubmitPopup" class="popup-overlay" style="display:none;">
+        <div class="popup-content">
+            <span class="icon-badge tint-danger" style="margin-bottom: 6px;"><svg class="icon"><use href="/icons.svg#i-alert"></use></svg></span>
+            <h2 style="color: var(--danger); margin: 6px 0;">この内容で登録しますか？</h2>
+            <p class="text-muted text-sm" style="margin: 0 0 18px;">登録すると、あとから内容の変更や削除はできません。</p>
+            <button type="button" id="confirmSubmitBtn" class="btn-duo btn-primary mt-0" onclick="confirmPendingSubmit()">登録する</button>
+            <button type="button" onclick="closeConfirmSubmitPopup()" class="btn-duo btn-outline" style="margin-top: 8px;">キャンセル</button>
+        </div>
+    </div>
+
     <!-- ★アプリ全体の使い方ガイド。ヘッダーの「使い方」ボタンから開く -->
     <div id="howToPopup" class="popup-overlay" style="display:none;">
         <div class="popup-content popup-wide" style="max-height: 85vh; overflow-y: auto;">
@@ -131,12 +142,11 @@
                 <h3 style="color: var(--secondary);">Morning（朝のTODO）</h3>
                 <ol class="text-muted" style="margin: 4px 0 0; padding-left: 1.3em;">
                     <li>「今日やりたいこと」を最大3つ、入力欄に書く（例：読書30分）</li>
-                    <li>できたらチェックボックスにチェックを入れる</li>
-                    <li>「やらない事（防御）」には、やめたい悪い習慣を書いておく。我慢できたらチェック</li>
-                    <li>下の「保存」ボタンを押す</li>
+                    <li>できたらチェックボックスにチェックを入れる（入れた瞬間に確定します）</li>
+                    <li>「防衛クエスト」には、やめたい悪い習慣を書いておく。我慢できたらチェック</li>
                 </ol>
                 <p class="text-muted mt-2">
-                    チェックした項目1つにつき+1EXP。同時に画面のボスにもダメージが入り（達成したTODO1つにつき1ダメージ）、3つ全部達成するとボスを倒せます。保存できるのは1日1回、翌日また新しく入力し直します。
+                    チェックを入れた瞬間に+1EXP、同時に画面のボスにもダメージが入ります（TODO1つにつき1ダメージ、防衛クエストはダメージ対象外）。ボスを撃破すると次はさらにHPの多いボスが登場します。一度チェックした項目はあとから変更できません。
                 </p>
 
                 <h3 style="color: var(--purple);">Night（夜のジャーナル）</h3>
@@ -216,11 +226,20 @@
 
                 <h3 style="color: var(--danger);">レベルとEXPの仕組み</h3>
                 <p class="text-muted" style="margin: 4px 0;">
-                    TODOのチェック、やらない事の達成、ジャーナルの各項目の入力、毎日のログインボーナスなど、行動1つにつき+1EXPがもらえます。EXPが100貯まるごとにレベルが1上がり、レベルに応じてテーマや背景アップロードなどの新しい機能が解放されていきます。
+                    TODOのチェック、防衛クエストの達成、ジャーナルの各項目の入力、毎日のログインボーナスなど、行動1つにつき+1EXPがもらえます。EXPが貯まるごとにレベルが上がり、レベルに応じてテーマや背景アップロードなどの新しい機能が解放されていきます。
                 </p>
             </div>
 
             <button onclick="closeHowToPopup()" class="btn-duo btn-primary" style="margin-top: 18px;">わかった！</button>
+        </div>
+    </div>
+
+    <!-- ★各項目の横の？ボタンから開く、その項目だけのミニ使い方ポップ（内容はhowToPopupの該当セクションと同じ文言） -->
+    <div id="itemHelpPopup" class="popup-overlay" style="display:none;">
+        <div class="popup-content popup-wide" style="max-height: 80vh; overflow-y: auto;">
+            <h2 class="row"><svg class="icon"><use href="/icons.svg#i-help"></use></svg> <span id="itemHelpTitle"></span></h2>
+            <div id="itemHelpBody" style="font-size: 0.9em; line-height: 1.7;"></div>
+            <button onclick="closeItemHelp()" class="btn-duo btn-primary" style="margin-top: 18px;">わかった！</button>
         </div>
     </div>
 
@@ -231,6 +250,7 @@
             <div class="app-nav-links">
                 <a th:if="${isAdmin}" th:href="@{/admin}" class="nav-btn"><svg class="icon icon-sm"><use href="/icons.svg#i-tool"></use></svg> 管理者画面</a>
                 <button type="button" onclick="openHowToPopup()" class="btn-duo btn-outline btn-sm"><svg class="icon icon-sm"><use href="/icons.svg#i-help"></use></svg> 使い方</button>
+                <button type="button" class="tab-btn settings btn-duo btn-outline btn-sm" onclick="switchTab('settings')"><svg class="icon icon-sm"><use href="/icons.svg#i-settings"></use></svg> 設定</button>
                 <form th:action="@{/logout}" method="post" class="mb-0">
                     <button type="submit" class="btn-duo btn-outline btn-sm"><svg class="icon icon-sm"><use href="/icons.svg#i-log-out"></use></svg> ログアウト</button>
                 </form>
@@ -253,6 +273,7 @@
             <div class="card-duo text-center">
                 <span class="row" style="justify-content:center; font-size: 1.05em; color: var(--text-muted); font-weight: 700;">
                     <svg class="icon" style="color:var(--accent);"><use href="/icons.svg#i-flame"></use></svg> 連続ログイン
+                    <button type="button" class="help-icon-btn" onclick="openItemHelp('streak')" aria-label="使い方"><svg class="icon icon-sm"><use href="/icons.svg#i-help"></use></svg></button>
                 </span>
                 <div style="margin: 8px 0;">
                     <span class="streak-number" th:text="${streak}"></span><span style="font-weight: 700; color: var(--text-muted);">Days</span>
@@ -265,7 +286,7 @@
                         <div class="stat-label">累計達成日数</div>
                     </div>
                     <div class="stat-mini">
-                        <div class="stat-value" th:text="${achievementRate} + '%'"></div>
+                        <div class="stat-value" id="achievementRateValue" th:text="${achievementRate} + '%'"></div>
                         <div class="stat-label">達成率</div>
                     </div>
                     <div class="stat-mini">
@@ -276,11 +297,13 @@
 
                 <div class="mt-4 divider-top" style="text-align: left; padding-top: var(--space-3); border-top: 1px solid var(--border);">
                     <div class="row-between" style="font-weight: 700; margin-bottom: 5px;">
-                        <span class="level-badge">Lv. <span th:text="${level}" style="font-size: 1.2em;"></span></span>
-                        <span class="text-sm text-muted"><span th:text="${expProgress}"></span> / <span th:text="${expRequired}"></span> EXP</span>
+                        <span class="level-badge">Lv. <span id="levelValue" th:text="${level}" style="font-size: 1.2em;"></span>
+                            <button type="button" class="help-icon-btn" onclick="openItemHelp('level')" aria-label="使い方"><svg class="icon icon-sm"><use href="/icons.svg#i-help"></use></svg></button>
+                        </span>
+                        <span class="text-sm text-muted"><span id="expProgressValue" th:text="${expProgress}"></span> / <span id="expRequiredValue" th:text="${expRequired}"></span> EXP</span>
                     </div>
                     <div class="exp-container">
-                        <div class="exp-bar" th:style="'width: ' + ${expProgressPercent} + '%;'"></div>
+                        <div id="expBarFill" class="exp-bar" th:style="'width: ' + ${expProgressPercent} + '%;'"></div>
                     </div>
                 </div>
 
@@ -297,16 +320,22 @@
                 <div th:if="${param.error != null and #strings.startsWith(param.error[0], 'ticket')}" class="banner banner-danger"
                      th:text="${param.error[0] == 'ticketNone'} ? 'お休みチケットの残りがありません。' : (${param.error[0] == 'ticketAlreadyLogged'} ? 'その日はすでに記録されています。' : '無効な日付です。')"></div>
                 <div id="calendar" class="calendar-grid"></div>
-                <p class="text-muted text-xs mt-2 mb-0">色のついていない過去の日をクリックすると、お休みチケットでログイン済みにできます。</p>
+                <p class="text-muted text-xs mt-2 mb-0">色のついていない過去の日をクリックすると、お休みチケットでログイン済みにできます。
+                    <button type="button" class="help-icon-btn" onclick="openItemHelp('calendar')" aria-label="使い方"><svg class="icon icon-sm"><use href="/icons.svg#i-help"></use></svg></button>
+                </p>
             </div>
 
             <div class="card-duo">
-                <h3 style="color: var(--secondary);"><svg class="icon icon-sm"><use href="/icons.svg#i-trending-up"></use></svg> 今週の成長グラフ</h3>
+                <h3 style="color: var(--secondary);"><svg class="icon icon-sm"><use href="/icons.svg#i-trending-up"></use></svg> 今週の成長グラフ
+                    <button type="button" class="help-icon-btn" onclick="openItemHelp('graph')" aria-label="使い方"><svg class="icon icon-sm"><use href="/icons.svg#i-help"></use></svg></button>
+                </h3>
                 <canvas id="myChart" style="max-height: 200px;"></canvas>
             </div>
 
             <div class="card-duo">
-                <h3 style="color: var(--gold-dark);"><svg class="icon icon-sm"><use href="/icons.svg#i-star"></use></svg> 気分の推移（直近14日）</h3>
+                <h3 style="color: var(--gold-dark);"><svg class="icon icon-sm"><use href="/icons.svg#i-star"></use></svg> 気分の推移（直近14日）
+                    <button type="button" class="help-icon-btn" onclick="openItemHelp('graph')" aria-label="使い方"><svg class="icon icon-sm"><use href="/icons.svg#i-help"></use></svg></button>
+                </h3>
                 <canvas id="moodChart" style="max-height: 160px;"></canvas>
             </div>
 
@@ -333,7 +362,6 @@
                     <svg class="icon icon-sm"><use href="/icons.svg#i-users"></use></svg> フレンド
                     <span th:if="${hasFriendRequests}" class="badge-dot">!</span>
                 </button>
-                <button class="tab-btn settings" onclick="switchTab('settings')"><svg class="icon icon-sm"><use href="/icons.svg#i-settings"></use></svg> 設定</button>
             </div>
 
             <!-- 朝の部 -->
@@ -350,54 +378,53 @@
 
                 <!-- ★モンスターバトル演出 -->
                 <div class="card-duo">
-                    <h3 style="color: var(--danger);"><svg class="icon icon-sm"><use href="/icons.svg#i-zap"></use></svg> モンスターバトル</h3>
+                    <h3 style="color: var(--danger);"><svg class="icon icon-sm"><use href="/icons.svg#i-zap"></use></svg> モンスターバトル
+                        <span id="monsterTierLabel" class="text-muted text-sm" style="font-weight:600;" th:text="'（' + ${monsterTier} + '体目）'"></span>
+                        <button type="button" class="help-icon-btn" onclick="openItemHelp('morning')" aria-label="使い方"><svg class="icon icon-sm"><use href="/icons.svg#i-help"></use></svg></button>
+                    </h3>
                     <div class="monster-arena">
-                        <div class="monster-sprite" th:classappend="${monsterDefeated} ? 'defeated' : ''">👹</div>
-                        <div class="monster-hp-bar"><div class="monster-hp-fill" th:style="'width:' + ${monsterHpPercent} + '%;'"></div></div>
+                        <div id="monsterSprite" class="monster-sprite" th:classappend="${monsterDefeated} ? 'defeated' : ''" th:text="${monsterSprite}"></div>
+                        <div class="monster-hp-bar"><div id="monsterHpFill" class="monster-hp-fill" th:style="'width:' + ${monsterHpPercent} + '%;'"></div></div>
                         <p class="text-sm mt-2 mb-0">
-                            <span th:unless="${monsterDefeated}" class="text-muted" th:text="'のこりHP ' + ${monsterHpCurrent} + ' / ' + ${monsterHpMax}"></span>
-                            <span th:if="${monsterDefeated}" class="monster-defeated-banner">モンスターを撃破した！</span>
+                            <span id="monsterHpText" th:unless="${monsterDefeated}" class="text-muted" th:text="'のこりHP ' + ${monsterHpCurrent} + ' / ' + ${monsterHpMax}"></span>
+                            <span id="monsterDefeatedBanner" th:if="${monsterDefeated}" class="monster-defeated-banner">モンスターを撃破した！</span>
                         </p>
                     </div>
                 </div>
 
                 <div class="card-duo">
-                    <h2><span class="icon-badge tint-primary"><svg class="icon"><use href="/icons.svg#i-sun"></use></svg></span> 今日のアクション</h2>
-                    <form th:if="${!isTaskDoneToday}" th:action="@{/saveTask}" th:object="${taskForm}" method="post" onsubmit="return checkTask(event)">
+                    <h2><span class="icon-badge tint-primary"><svg class="icon"><use href="/icons.svg#i-sun"></use></svg></span> 今日のアクション
+                        <button type="button" class="help-icon-btn" onclick="openItemHelp('morning')" aria-label="使い方"><svg class="icon icon-sm"><use href="/icons.svg#i-help"></use></svg></button>
+                    </h2>
+                    <form th:object="${taskForm}" onsubmit="return false;">
 
                         <div class="task-row" id="row1">
-                            <input type="checkbox" th:field="*{task1Done}" id="cb1">
-                            <input type="text" th:field="*{task1}" placeholder="例：白湯を飲む" id="text1">
+                            <input type="checkbox" th:field="*{task1Done}" id="cb1" th:disabled="${taskForm.task1Done}" onchange="toggleTaskItem('task1', this)">
+                            <input type="text" th:field="*{task1}" placeholder="例：白湯を飲む" id="text1" th:disabled="${taskForm.task1Done}">
                         </div>
                         <div class="task-row" id="row2">
-                            <input type="checkbox" th:field="*{task2Done}" id="cb2">
-                            <input type="text" th:field="*{task2}" placeholder="例：5分ストレッチ" id="text2">
+                            <input type="checkbox" th:field="*{task2Done}" id="cb2" th:disabled="${taskForm.task2Done}" onchange="toggleTaskItem('task2', this)">
+                            <input type="text" th:field="*{task2}" placeholder="例：5分ストレッチ" id="text2" th:disabled="${taskForm.task2Done}">
                         </div>
                         <div class="task-row" id="row3">
-                            <input type="checkbox" th:field="*{task3Done}" id="cb3">
-                            <input type="text" th:field="*{task3}" placeholder="例：本を1ページ読む" id="text3">
+                            <input type="checkbox" th:field="*{task3Done}" id="cb3" th:disabled="${taskForm.task3Done}" onchange="toggleTaskItem('task3', this)">
+                            <input type="text" th:field="*{task3}" placeholder="例：本を1ページ読む" id="text3" th:disabled="${taskForm.task3Done}">
                         </div>
 
-                        <!-- 防御（やらない目標） -->
+                        <!-- 防衛クエスト（やらない目標） -->
                         <h3 style="color: var(--danger); margin-top: 18px; font-size: 0.85em; border-top: 1px solid var(--border); padding-top: 14px;">
-                            <svg class="icon icon-sm"><use href="/icons.svg#i-shield"></use></svg> 今日の防御（悪習を断つ）
+                            <svg class="icon icon-sm"><use href="/icons.svg#i-shield"></use></svg> 防衛クエスト（悪習を断つ）
                         </h3>
-                        <div class="task-row" style="background: color-mix(in srgb, var(--danger) 6%, var(--surface)); padding: 10px; border-radius: var(--radius-sm);">
-                            <input type="checkbox" th:field="*{badHabitDone}">
-                            <input type="text" th:field="*{badHabit}" placeholder="例：夜22時以降にスマホを見ない">
+                        <div class="task-row" id="rowBadHabit" style="background: color-mix(in srgb, var(--danger) 6%, var(--surface)); padding: 10px; border-radius: var(--radius-sm);">
+                            <input type="checkbox" th:field="*{badHabitDone}" id="cbBadHabit" th:disabled="${taskForm.badHabitDone}" onchange="toggleTaskItem('badHabit', this)">
+                            <input type="text" th:field="*{badHabit}" placeholder="例：夜22時以降にスマホを見ない" id="textBadHabit" th:disabled="${taskForm.badHabitDone}">
                         </div>
 
-                        <p class="text-muted text-xs mt-3">※アクション・防御1つにつき+1EXPゲット！</p>
+                        <p class="text-muted text-xs mt-3">※内容を入力してからチェックを入れると、その瞬間に+1EXPとボスへのダメージが確定します（一度チェックした項目はあとから変更できません）</p>
                         <p id="taskErrorText" class="row" style="color: var(--danger); font-weight: 700; margin: 8px 0; display: none;">
-                            <svg class="icon icon-sm"><use href="/icons.svg#i-alert"></use></svg> 1つ以上「入力」と「チェック」をしてください
+                            <svg class="icon icon-sm"><use href="/icons.svg#i-alert"></use></svg> 先に内容を入力してからチェックしてください
                         </p>
-                        <button type="submit" class="btn-duo btn-primary">記録してEXPゲット！</button>
                     </form>
-
-                    <div th:if="${isTaskDoneToday}" class="text-center" style="padding: 18px 0;">
-                        <h3 style="color: var(--primary);">本日のアクション＆防御は記録完了です</h3>
-                        <p class="text-muted mb-0">明日も目標に向かって頑張りましょう！</p>
-                    </div>
                 </div>
 
                 <div class="card-duo">
@@ -410,11 +437,8 @@
                                 <span th:if="${task.task1Done}" th:text="${task.task1}" style="display: block;"></span>
                                 <span th:if="${task.task2Done}" th:text="${task.task2}" style="display: block;"></span>
                                 <span th:if="${task.task3Done}" th:text="${task.task3}" style="display: block;"></span>
-                                <span th:if="${task.badHabitDone}" th:text="'防御成功：' + ${task.badHabit}" style="display: block; color: var(--danger); font-weight: 700;"></span>
+                                <span th:if="${task.badHabitDone}" th:text="'防衛クエスト成功：' + ${task.badHabit}" style="display: block; color: var(--danger); font-weight: 700;"></span>
                             </div>
-                            <form th:action="@{/deleteTask/{id}(id=${task.id})}" method="post">
-                                <button type="submit" class="btn-duo btn-danger btn-sm">削除</button>
-                            </form>
                         </div>
                         <div th:if="${#lists.isEmpty(tasks)}" class="empty-state">
                             <svg class="icon icon-xl"><use href="/icons.svg#i-inbox"></use></svg>
@@ -428,7 +452,9 @@
             <div id="night-tab" class="tab-content">
                 <div class="card-duo">
                     <h2 class="row-between">
-                        <span class="row"><span class="icon-badge tint-secondary"><svg class="icon"><use href="/icons.svg#i-moon"></use></svg></span> 夜のジャーナル</span>
+                        <span class="row"><span class="icon-badge tint-secondary"><svg class="icon"><use href="/icons.svg#i-moon"></use></svg></span> 夜のジャーナル
+                            <button type="button" class="help-icon-btn" onclick="openItemHelp('night')" aria-label="使い方"><svg class="icon icon-sm"><use href="/icons.svg#i-help"></use></svg></button>
+                        </span>
                         <span class="text-sm text-muted" style="font-weight:600;">+MAX 6 EXP</span>
                     </h2>
 
@@ -443,6 +469,11 @@
                             <input type="radio" id="star3" name="moodScore" value="3" th:checked="${journalForm.moodScore == 3}"><label for="star3"><svg class="icon"><use href="/icons.svg#i-star"></use></svg></label>
                             <input type="radio" id="star2" name="moodScore" value="2" th:checked="${journalForm.moodScore == 2}"><label for="star2"><svg class="icon"><use href="/icons.svg#i-star"></use></svg></label>
                             <input type="radio" id="star1" name="moodScore" value="1" th:checked="${journalForm.moodScore == 1}"><label for="star1"><svg class="icon"><use href="/icons.svg#i-star"></use></svg></label>
+                        </div>
+                        <div class="weather-picker">
+                            <input type="radio" id="weatherSunny" name="weather" value="SUNNY" th:checked="${journalForm.weather == 'SUNNY'}"><label for="weatherSunny" title="晴れ">☀️</label>
+                            <input type="radio" id="weatherCloudy" name="weather" value="CLOUDY" th:checked="${journalForm.weather == 'CLOUDY'}"><label for="weatherCloudy" title="曇り">☁️</label>
+                            <input type="radio" id="weatherRainy" name="weather" value="RAINY" th:checked="${journalForm.weather == 'RAINY'}"><label for="weatherRainy" title="雨">☔</label>
                         </div>
 
                         <label class="field-label">今日できたこと</label>
@@ -474,22 +505,44 @@
                 </div>
 
                 <div class="card-duo">
+                    <h2><span class="icon-badge tint-gold"><svg class="icon"><use href="/icons.svg#i-trending-up"></use></svg></span> AIジャーナル成長分析</h2>
+
+                    <div th:if="${growthInsight.status.name() == 'READY'}">
+                        <p style="background: var(--gold-tint); color: var(--gold-dark); border-radius: var(--radius-sm); padding: 14px 16px; line-height: 1.7; font-weight: 600;" th:text="${growthInsight.message}"></p>
+                        <p class="text-muted text-xs mt-2">過去30日分のジャーナル記録をもとにAIが分析しています</p>
+                    </div>
+
+                    <div th:if="${growthInsight.status.name() == 'NOT_ENOUGH_DATA'}" class="empty-state">
+                        <svg class="icon icon-xl"><use href="/icons.svg#i-trending-up"></use></svg>
+                        <p>ジャーナルを<span th:text="${growthInsight.minEntries}"></span>日分記録すると、AIがあなたの成長を分析してくれます（現在<span th:text="${growthInsight.entryCount}"></span>日分）</p>
+                    </div>
+
+                    <p th:if="${growthInsight.status.name() == 'NOT_CONFIGURED'}" class="text-muted text-sm mb-0">
+                        AI分析機能を利用するには、管理者がOPENAI_API_KEYを設定する必要があります。
+                    </p>
+
+                    <p th:if="${growthInsight.status.name() == 'GENERATION_FAILED'}" class="text-muted text-sm mb-0">
+                        AI分析の生成に失敗しました。しばらくしてからまた確認してください。
+                    </p>
+                </div>
+
+                <div class="card-duo">
                     <h3 style="color: var(--text-muted);"><svg class="icon icon-sm"><use href="/icons.svg#i-clock"></use></svg> 過去のジャーナル記録</h3>
                     <div class="history-area">
                         <div th:each="journal : ${journals}" class="record-item">
                             <img th:if="${journal.photoFilename != null}" th:src="@{'/journal-photos/' + ${journal.photoFilename}}"
                                  style="width:44px; height:44px; object-fit:cover; border-radius: var(--radius-sm); margin-right: 10px; flex-shrink:0;">
-                            <div style="font-size: 0.9em; width: 75%; cursor: pointer;" onclick="showJournalDetail(this)"
-                                 th:attr="data-date=${journal.date},data-mood=${journal.moodScore},data-achievement=${journal.achievement ?: ''},data-gratitude1=${journal.gratitude1 ?: ''},data-gratitude2=${journal.gratitude2 ?: ''},data-gratitude3=${journal.gratitude3 ?: ''},data-diary=${journal.diaryText ?: ''},data-photo=${journal.photoFilename != null ? '/journal-photos/' + journal.photoFilename : ''}">
+                            <div style="font-size: 0.9em; flex: 1; cursor: pointer;" onclick="showJournalDetail(this)"
+                                 th:attr="data-date=${journal.date},data-mood=${journal.moodScore},data-weather=${journal.weather ?: ''},data-achievement=${journal.achievement ?: ''},data-gratitude1=${journal.gratitude1 ?: ''},data-gratitude2=${journal.gratitude2 ?: ''},data-gratitude3=${journal.gratitude3 ?: ''},data-diary=${journal.diaryText ?: ''},data-photo=${journal.photoFilename != null ? '/journal-photos/' + journal.photoFilename : ''}">
                                 <strong th:text="${journal.date}" style="color: var(--text);"></strong>
                                 <span th:each="i : ${#numbers.sequence(1,5)}" th:text="${i <= journal.moodScore} ? '★' : '☆'" th:style="${i <= journal.moodScore} ? 'color:var(--gold);' : 'color:var(--border-strong);'"></span>
+                                <span th:if="${journal.weather == 'SUNNY'}">☀️</span>
+                                <span th:if="${journal.weather == 'CLOUDY'}">☁️</span>
+                                <span th:if="${journal.weather == 'RAINY'}">☔</span>
                                 <br>
                                 <span th:text="${journal.achievement}" style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"></span>
                                 <span th:if="${journal.diaryText != null && journal.diaryText != ''}" th:text="${journal.diaryText}" style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" class="text-muted"></span>
                             </div>
-                            <form th:action="@{/deleteJournal/{id}(id=${journal.id})}" method="post">
-                                <button type="submit" class="btn-duo btn-danger btn-sm">削除</button>
-                            </form>
                         </div>
                         <div th:if="${#lists.isEmpty(journals)}" class="empty-state">
                             <svg class="icon icon-xl"><use href="/icons.svg#i-inbox"></use></svg>
@@ -502,7 +555,9 @@
             <!-- クエストタブ -->
             <div id="quest-tab" class="tab-content">
                 <div class="card-duo">
-                    <h2><span class="icon-badge tint-primary"><svg class="icon"><use href="/icons.svg#i-sun"></use></svg></span> デイリークエスト</h2>
+                    <h2><span class="icon-badge tint-primary"><svg class="icon"><use href="/icons.svg#i-sun"></use></svg></span> デイリークエスト
+                        <button type="button" class="help-icon-btn" onclick="openItemHelp('quest')" aria-label="使い方"><svg class="icon icon-sm"><use href="/icons.svg#i-help"></use></svg></button>
+                    </h2>
                     <div th:each="qv : ${dailyQuests}" class="quest-item" th:classappend="${qv.completed} ? ' completed' : ''">
                         <div class="quest-icon" th:text="${qv.quest.icon}"></div>
                         <div class="quest-body">
@@ -523,7 +578,9 @@
                     <p th:if="${#lists.isEmpty(dailyQuests)}" class="text-muted text-center">クエストがありません</p>
                 </div>
                 <div class="card-duo">
-                    <h2><span class="icon-badge tint-gold"><svg class="icon"><use href="/icons.svg#i-flame"></use></svg></span> ウィークリークエスト</h2>
+                    <h2><span class="icon-badge tint-gold"><svg class="icon"><use href="/icons.svg#i-flame"></use></svg></span> ウィークリークエスト
+                        <button type="button" class="help-icon-btn" onclick="openItemHelp('quest')" aria-label="使い方"><svg class="icon icon-sm"><use href="/icons.svg#i-help"></use></svg></button>
+                    </h2>
                     <div th:each="qv : ${weeklyQuests}" class="quest-item" th:classappend="${qv.completed} ? ' completed' : ''">
                         <div class="quest-icon" th:text="${qv.quest.icon}"></div>
                         <div class="quest-body">
@@ -548,7 +605,9 @@
             <!-- 実績タブ -->
             <div id="achievements-tab" class="tab-content">
                 <div class="card-duo">
-                    <h2><span class="icon-badge tint-gold"><svg class="icon"><use href="/icons.svg#i-award"></use></svg></span> 実績コレクション</h2>
+                    <h2><span class="icon-badge tint-gold"><svg class="icon"><use href="/icons.svg#i-award"></use></svg></span> 実績コレクション
+                        <button type="button" class="help-icon-btn" onclick="openItemHelp('achievements')" aria-label="使い方"><svg class="icon icon-sm"><use href="/icons.svg#i-help"></use></svg></button>
+                    </h2>
                     <p class="text-muted text-sm" style="margin-bottom: 15px;">未獲得の実績も「あと少し」の進捗が見えます。集めてみましょう！</p>
                     <div th:each="bv : ${allBadges}" class="quest-item" th:classappend="${bv.earned} ? ' completed' : ''">
                         <div class="quest-icon" th:classappend="${bv.earned} ? '' : 'dim'" th:text="${bv.badge.icon}"></div>
@@ -570,7 +629,9 @@
             <!-- フレンドタブ -->
             <div id="friends-tab" class="tab-content">
                 <div class="card-duo">
-                    <h2><span class="icon-badge tint-secondary"><svg class="icon"><use href="/icons.svg#i-users"></use></svg></span> フレンドを追加</h2>
+                    <h2><span class="icon-badge tint-secondary"><svg class="icon"><use href="/icons.svg#i-users"></use></svg></span> フレンドを追加
+                        <button type="button" class="help-icon-btn" onclick="openItemHelp('friends')" aria-label="使い方"><svg class="icon icon-sm"><use href="/icons.svg#i-help"></use></svg></button>
+                    </h2>
                     <div th:if="${param.error != null and #strings.startsWith(param.error[0], 'friend')}" class="banner banner-danger"
                          th:text="${param.error[0] == 'friendNotFound'} ? 'そのユーザー名は見つかりませんでした。' : (${param.error[0] == 'friendSelf'} ? '自分自身は追加できません。' : 'すでに申請済み、またはフレンドです。')"></div>
                     <div th:if="${param.friendRequestSent != null}" class="banner banner-success">フレンド申請を送りました！</div>
@@ -615,7 +676,9 @@
                 </div>
 
                 <div class="card-duo">
-                    <h2><span class="icon-badge tint-purple"><svg class="icon"><use href="/icons.svg#i-trophy"></use></svg></span> 週間リーグ：<span th:text="${leagueTierName}"></span></h2>
+                    <h2><span class="icon-badge tint-purple"><svg class="icon"><use href="/icons.svg#i-trophy"></use></svg></span> 週間リーグ：<span th:text="${leagueTierName}"></span>
+                        <button type="button" class="help-icon-btn" onclick="openItemHelp('friends')" aria-label="使い方"><svg class="icon icon-sm"><use href="/icons.svg#i-help"></use></svg></button>
+                    </h2>
                     <p class="text-muted text-sm" style="margin-bottom: 15px;">
                         毎週月曜に、同じ階層のユーザーの中で週間EXP上位30%が昇格、下位30%が降格します（<span th:text="${leagueTierIndex + 1}"></span>/<span th:text="${leagueTierCount}"></span>階層）。フレンドでなくても同じ階層の全員が対象です。
                     </p>
@@ -632,7 +695,9 @@
                 </div>
 
                 <div class="card-duo">
-                    <h2><span class="icon-badge tint-gold"><svg class="icon"><use href="/icons.svg#i-award"></use></svg></span> リーダーボード</h2>
+                    <h2><span class="icon-badge tint-gold"><svg class="icon"><use href="/icons.svg#i-award"></use></svg></span> リーダーボード
+                        <button type="button" class="help-icon-btn" onclick="openItemHelp('friends')" aria-label="使い方"><svg class="icon icon-sm"><use href="/icons.svg#i-help"></use></svg></button>
+                    </h2>
                     <p class="text-muted text-sm" style="margin-bottom: 15px;">自分とフレンドをレベル順に並べています。「応援」は1人1日1回まで、応援された相手に+1EXPが入ります。</p>
                     <div th:each="row, iter : ${friendLeaderboard}" class="record-item" th:classappend="${row.isSelf} ? 'is-self' : ''">
                         <div class="row">
@@ -660,7 +725,9 @@
             <div id="settings-tab" class="tab-content">
 
                 <div class="card-duo">
-                    <h2><span class="icon-badge tint-gold"><svg class="icon"><use href="/icons.svg#i-palette"></use></svg></span> カラーテーマ解放（10レベルごと）</h2>
+                    <h2><span class="icon-badge tint-gold"><svg class="icon"><use href="/icons.svg#i-palette"></use></svg></span> カラーテーマ解放（10レベルごと）
+                        <button type="button" class="help-icon-btn" onclick="openItemHelp('settings')" aria-label="使い方"><svg class="icon icon-sm"><use href="/icons.svg#i-help"></use></svg></button>
+                    </h2>
                     <p class="text-muted text-sm" style="margin-bottom: 15px;">レベルを上げて新しいアプリのテーマカラーを解放しよう！</p>
 
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
@@ -740,12 +807,14 @@
                         <input type="text" name="habit2" th:value="${fixedHabit2}" placeholder="習慣2 (例: 5分ストレッチ)">
                         <input type="text" name="habit3" th:value="${fixedHabit3}" placeholder="習慣3 (例: 本を1ページ読む)">
                         <input type="text" name="badHabit" th:value="${fixedBadHabit}" placeholder="やらない事 (例: お菓子を食べない)">
-                        <button type="submit" class="btn-duo btn-secondary" style="margin-top: 5px;">習慣・防御を保存</button>
+                        <button type="submit" class="btn-duo btn-secondary" style="margin-top: 5px;">習慣・防衛クエストを保存</button>
                     </form>
                 </div>
 
                 <div class="card-duo">
-                    <h2><span class="icon-badge"><svg class="icon"><use href="/icons.svg#i-bell"></use></svg></span> 通知設定</h2>
+                    <h2><span class="icon-badge"><svg class="icon"><use href="/icons.svg#i-bell"></use></svg></span> 通知設定
+                        <button type="button" class="help-icon-btn" onclick="openItemHelp('settings')" aria-label="使い方"><svg class="icon icon-sm"><use href="/icons.svg#i-help"></use></svg></button>
+                    </h2>
                     <p class="text-muted text-sm">アプリからのリマインドの頻度を選べます。</p>
                     <form th:action="@{/updateNotificationSettings}" method="post" class="row-wrap">
                         <select name="notificationFrequency" style="flex: 1; min-width: 160px;">
@@ -839,6 +908,61 @@
         }
         function closeHowToPopup() {
             document.getElementById('howToPopup').style.display = 'none';
+        }
+
+        // ★各項目の？ボタン用ミニ使い方。文言はhowToPopupの該当セクションと揃えてある（静的な固定文言のみでユーザー入力は含まないためinnerHTML使用）
+        const ITEM_HELP = {
+            streak: {
+                title: '連続ログイン・累計・達成率',
+                html: '<p class="text-muted" style="margin:4px 0;"><b style="color:var(--text);">連続ログイン</b>は、毎日欠かさずログインした日数です。1日でもログインしない日があると0に戻ってしまいます（お休みチケットで救済できます）。<br><b style="color:var(--text);">累計達成日数</b>は、これまでログインした合計日数。連続記録が途切れても減りません。<br><b style="color:var(--text);">達成率</b>は、これまで入力したTODOのうち実際にチェックできた割合です。<br>「連続記録をシェア画像で保存」を押すと、現在の連続日数・レベル・累計日数入りの画像がダウンロードできます。</p><p class="text-muted" style="margin:12px 0 4px;"><b style="color:var(--text);">お休みチケット</b>：毎週月曜日に1枚、自動で補充されます（繰り越されず1枚にリセット）。昨日ログインを忘れても今日ログインすれば自動で1枚使われて連続記録が守られるほか、カレンダーの未ログインの日をクリックして自分で使うこともできます。今日・未来の日や、すでに記録がある日には使えません。</p>'
+            },
+            calendar: {
+                title: 'カレンダーの色の見方',
+                html: '<p class="text-muted" style="margin:4px 0;">色が濃いほど、その日にたくさん行動した（TODOやジャーナルをたくさん記録した）ことを表します。色がついていない日は、何も記録がない日です。<br>色のついていない過去の日をクリックすると、お休みチケットでログイン済みにできます（今日・未来の日や、チケットが0枚のときは使えません）。</p>'
+            },
+            graph: {
+                title: 'グラフ・気分の推移',
+                html: '<p class="text-muted" style="margin:4px 0;">「今週の成長グラフ」で直近1週間に獲得したEXPの推移を、「気分の推移」で直近14日間の気分スコア（★の数）の移り変わりをグラフで振り返れます。</p>'
+            },
+            morning: {
+                title: 'Morning（朝のTODO）',
+                html: '<ol class="text-muted" style="margin:4px 0 0; padding-left:1.3em;"><li>「今日やりたいこと」を最大3つ、入力欄に書く（例：読書30分）</li><li>できたらチェックボックスにチェックを入れる（入れた瞬間に確定します）</li><li>「防衛クエスト」には、やめたい悪い習慣を書いておく。我慢できたらチェック</li></ol><p class="text-muted mt-2">チェックを入れた瞬間に+1EXP、同時にボスにもダメージが入ります（TODO1つにつき1ダメージ、防衛クエストはダメージ対象外）。ボスを撃破すると次はさらにHPの多いボスが登場します。一度チェックした項目はあとから変更できません。</p>'
+            },
+            night: {
+                title: 'Night（夜のジャーナル）',
+                html: '<ol class="text-muted" style="margin:4px 0 0; padding-left:1.3em;"><li>今日「達成できたこと」を一言書く</li><li>「感謝したこと」を最大3つ書く</li><li>自由に日記を書く（写真を1枚貼り付けることもできます）</li><li>今日の気分を★1〜5で選ぶ（天気も一緒に記録できます）</li></ol><p class="text-muted mt-2">入力した項目ごとに+1EXP（全部埋めると最大+6EXP）。空欄のままでもOKですが、何か1つも入力しないと保存できません。こちらも1日1回だけです。写真の添付や天気の選択自体にEXPは付きません。</p>'
+            },
+            quest: {
+                title: 'Quest（クエスト）',
+                html: '<p class="text-muted" style="margin:4px 0;"><b style="color:var(--text);">デイリークエスト</b>は毎日リセットされる短い目標（例：今日のTODOを1つ達成する）、<b style="color:var(--text);">ウィークリークエスト</b>は週替わりの目標（例：週5日ログインする）です。条件を満たすと自動で進捗が埋まり、「受け取る」ボタンを押すとEXPがもらえます。</p><p class="text-muted" style="margin:4px 0;">受け取り忘れを防ぐため、達成済みなのに未受取のクエストがあると、下のタブの「Quest」の横に赤い「！」マークが出ます。</p>'
+            },
+            achievements: {
+                title: '実績（バッジ）',
+                html: '<p class="text-muted" style="margin:4px 0;">「レベル」「連続ログイン日数」「ジャーナル記録数」「TODO達成数」の4種類の条件で、それぞれ複数ランクのバッジが用意されています。条件を満たすと自動で解放されます。まだ取っていないバッジもグレーで表示され、あと何回・あといくつで取れるかの進捗も見えます。</p>'
+            },
+            friends: {
+                title: 'フレンド',
+                html: '<p class="text-muted" style="margin:4px 0;">相手のユーザー名を入力して申請を送り、相手が承認するとフレンドになれます。リーダーボードで、自分とフレンドをレベル順に見比べられます。届いている申請があるとフレンドタブに赤い「！」が表示されます。</p><p class="text-muted" style="margin:4px 0;">リーダーボードの各フレンドには「応援する」ボタンがあり、1日1回押すと相手に+1EXPが届きます。応援は誰から届いたか毎日リセットされて表示されます。</p><p class="text-muted" style="margin:4px 0;">「週間リーグ」では全ユーザーがブロンズ〜ダイヤモンドの5階層に分かれ、毎週月曜の朝に、同じ階層の中で今週の獲得EXPが上位30%なら昇格、下位30%なら降格します。フレンドでなくても同じ階層の人と競い合えます。</p>'
+            },
+            settings: {
+                title: '設定でできること',
+                html: '<p class="text-muted" style="margin:4px 0;"><b style="color:var(--text);">テーマ</b>：レベルが10上がるごとに新しい背景テーマが解放され、ボタン1つで切り替えられます。<br><b style="color:var(--text);">好きな画像を背景に</b>：Lv30に到達すると、お気に入りの画像をアップロードしてアプリ全体の背景にできます。<br><b style="color:var(--text);">目標・習慣の設定</b>：長期目標、なりたい自分、朝の固定習慣、通知の頻度をいつでも変更できます。<br><b style="color:var(--text);">アカウント</b>：メールアドレスを登録しておくと、パスワードを忘れた時にログイン画面から再設定できます。<br><b style="color:var(--text);">通知</b>：「通知頻度」を選んだ上で「この端末で通知を有効にする」ボタンを押すと、ブラウザ通知としてリマインドが届きます。</p>'
+            },
+            level: {
+                title: 'レベルとEXPの仕組み',
+                html: '<p class="text-muted" style="margin:4px 0;">TODOのチェック、防衛クエストの達成、ジャーナルの各項目の入力、毎日のログインボーナスなど、行動1つにつき+1EXPがもらえます。レベルが上がるごとに次のレベルまでに必要なEXPも増えていき、レベルに応じてテーマや背景アップロードなどの新しい機能が解放されていきます。</p>'
+            }
+        };
+
+        function openItemHelp(key) {
+            const item = ITEM_HELP[key];
+            if (!item) return;
+            document.getElementById('itemHelpTitle').textContent = item.title;
+            document.getElementById('itemHelpBody').innerHTML = item.html;
+            document.getElementById('itemHelpPopup').style.display = 'flex';
+        }
+        function closeItemHelp() {
+            document.getElementById('itemHelpPopup').style.display = 'none';
         }
 
         // --- 2. グラフ描画機能 ---
@@ -964,7 +1088,7 @@
                 { label: 'TODO 1', value: d.task1, done: d.task1done === 'true' },
                 { label: 'TODO 2', value: d.task2, done: d.task2done === 'true' },
                 { label: 'TODO 3', value: d.task3, done: d.task3done === 'true' },
-                { label: '防御', value: d.badhabit, done: d.badhabitdone === 'true' }
+                { label: '防衛クエスト', value: d.badhabit, done: d.badhabitdone === 'true' }
             ].forEach(r => {
                 if (!r.value) return;
                 const p = document.createElement('p');
@@ -983,9 +1107,10 @@
             body.innerHTML = '';
 
             const moodScore = parseInt(d.mood, 10) || 0;
+            const weatherEmoji = { SUNNY: '☀️', CLOUDY: '☁️', RAINY: '☔' }[d.weather] || '';
             const moodP = document.createElement('p');
             moodP.style.margin = '8px 0';
-            moodP.textContent = '気分： ' + '★'.repeat(moodScore) + '☆'.repeat(5 - moodScore);
+            moodP.textContent = '気分： ' + '★'.repeat(moodScore) + '☆'.repeat(5 - moodScore) + (weatherEmoji ? '　天気： ' + weatherEmoji : '');
             body.appendChild(moodP);
 
             [
@@ -1028,20 +1153,152 @@
             document.getElementById('detailPopup').style.display = 'none';
         }
 
-        // --- 5. 入力チェック機能 ---
-        function checkTask(event) {
-            const form = event.target;
-            const t1 = form.querySelector('[name="task1"]').value.trim();
-            const c1 = form.querySelector('[name="task1Done"]').checked;
-            const t2 = form.querySelector('[name="task2"]').value.trim();
-            const c2 = form.querySelector('[name="task2Done"]').checked;
-            const t3 = form.querySelector('[name="task3"]').value.trim();
-            const c3 = form.querySelector('[name="task3Done"]').checked;
+        // --- 5. 今日のアクション：チェックを入れた瞬間に1項目ずつ即時保存・即時ダメージ ---
+        const TODAY_ISO = /*[[${todayIso}]]*/ '2026-01-01';
+        const TASK_ITEM_TEXT_INPUT_ID = { task1: 'text1', task2: 'text2', task3: 'text3', badHabit: 'textBadHabit' };
 
-            if ((t1 && c1) || (t2 && c2) || (t3 && c3)) return true;
-            event.preventDefault();
-            document.getElementById('taskErrorText').style.display = 'flex';
-            return false;
+        // ★チェックを入れる前（＝まだサーバーに保存されていない）入力途中の文字は、
+        // ブラウザを更新すると消えてしまっていたため、localStorageに下書きとして保存しておく。
+        // チェックしてロックに成功したら、その項目の下書きは不要になるので消す。日付をキーに含めることで、
+        // 日をまたいだ古い下書きが翌日以降のプレースホルダーを誤って上書きしないようにしている。
+        function taskDraftKey(slot) {
+            return 'taskDraft:' + TODAY_ISO + ':' + slot;
+        }
+
+        function restoreTaskDrafts() {
+            Object.keys(TASK_ITEM_TEXT_INPUT_ID).forEach(slot => {
+                const textEl = document.getElementById(TASK_ITEM_TEXT_INPUT_ID[slot]);
+                if (!textEl || textEl.disabled) return; // ロック済みの項目は保存済みの本物のテキストを優先する
+                const draft = localStorage.getItem(taskDraftKey(slot));
+                if (draft) textEl.value = draft;
+                textEl.addEventListener('input', () => {
+                    localStorage.setItem(taskDraftKey(slot), textEl.value);
+                    updateAchievementRateDisplay(); // ★自由入力中でも達成率の分母にリアルタイムで反映する
+                });
+            });
+            updateAchievementRateDisplay();
+        }
+
+        async function toggleTaskItem(slot, checkboxEl) {
+            const textEl = document.getElementById(TASK_ITEM_TEXT_INPUT_ID[slot]);
+            const text = textEl.value.trim();
+
+            if (!checkboxEl.checked) return; // ロック済み項目は外せない仕様のため、外す方向の変化は起きない想定
+
+            if (!text) {
+                checkboxEl.checked = false;
+                document.getElementById('taskErrorText').style.display = 'flex';
+                return;
+            }
+            document.getElementById('taskErrorText').style.display = 'none';
+            checkboxEl.disabled = true;
+            textEl.disabled = true;
+
+            try {
+                const res = await fetch('/toggleTaskItem', {
+                    method: 'POST',
+                    headers: csrfHeaders(),
+                    body: JSON.stringify({ slot, text })
+                });
+                if (!res.ok) {
+                    checkboxEl.checked = false;
+                    checkboxEl.disabled = false;
+                    textEl.disabled = false;
+                    document.getElementById('taskErrorText').style.display = 'flex';
+                    return;
+                }
+                localStorage.removeItem(taskDraftKey(slot)); // ★ロックできたので下書きはもう不要
+                const data = await res.json();
+                updateMonsterArena(data);
+                updateExpDisplay(data);
+                updateAchievementRateDisplay();
+                if (data.damage > 0) showDamagePopup(data.damage, data.monsterDefeated);
+                if (data.levelUp) showLevelUpPopup(data.levelUp);
+            } catch (e) {
+                checkboxEl.checked = false;
+                checkboxEl.disabled = false;
+                textEl.disabled = false;
+                console.error(e);
+            }
+        }
+
+        function updateMonsterArena(data) {
+            const sprite = document.getElementById('monsterSprite');
+            sprite.textContent = data.monsterSprite;
+            sprite.classList.remove('defeated');
+            sprite.classList.add('hit');
+            setTimeout(() => sprite.classList.remove('hit'), 300);
+
+            document.getElementById('monsterHpFill').style.width = data.monsterHpPercent + '%';
+            document.getElementById('monsterTierLabel').textContent = '（' + data.monsterTier + '体目）';
+
+            const hpText = document.getElementById('monsterHpText');
+            hpText.textContent = 'のこりHP ' + data.monsterHpCurrent + ' / ' + data.monsterHpMax;
+            hpText.style.display = '';
+            const defeatedBanner = document.getElementById('monsterDefeatedBanner');
+            if (defeatedBanner) defeatedBanner.style.display = 'none';
+        }
+
+        function updateExpDisplay(data) {
+            document.getElementById('levelValue').textContent = data.level;
+            document.getElementById('expProgressValue').textContent = data.expProgress;
+            document.getElementById('expRequiredValue').textContent = data.expRequired;
+            document.getElementById('expBarFill').style.width = data.expProgressPercent + '%';
+        }
+
+        // ★達成率＝(過去分の累計) + (今日、画面に実際入力されている内容から数えた分)。
+        // サーバーは今日まだ未チェックの自由入力テキストを知らないため、今日の分はここで
+        // DOMを直接見て数える（防衛クエストは対象外、task1〜3のみ）。
+        const HISTORICAL_INPUT_COUNT = /*[[${historicalInputCount}]]*/ 0;
+        const HISTORICAL_COMPLETED_COUNT = /*[[${historicalCompletedCount}]]*/ 0;
+
+        function updateAchievementRateDisplay() {
+            const rateEl = document.getElementById('achievementRateValue');
+            if (!rateEl) return;
+            // ★注意：Thymeleafのインラインscriptは"[["を式展開の開始とみなすため、
+            // JSの配列リテラルを`[[`で書き始めない（オブジェクトの配列にして回避している）
+            const slots = [
+                {cb: 'cb1', text: 'text1'},
+                {cb: 'cb2', text: 'text2'},
+                {cb: 'cb3', text: 'text3'}
+            ];
+            // ★今日まだ1つもチェックしていない（＝どのチェックボックスもロックされていない）うちは、
+            // 今日の分を分母に加えない。無条件に加えると、日をまたいだ直後・何も操作していないのに
+            // 固定習慣のプレースホルダー分が上乗せされて前日までの達成率が下がって見えてしまう。
+            const hasCheckedAnyToday = slots.some(s => document.getElementById(s.cb).disabled);
+
+            let todayInput = 0;
+            let todayCompleted = 0;
+            if (hasCheckedAnyToday) {
+                slots.forEach(s => {
+                    const cb = document.getElementById(s.cb);
+                    const text = document.getElementById(s.text);
+                    if (text.value.trim()) {
+                        todayInput++;
+                        if (cb.checked) todayCompleted++;
+                    }
+                });
+            }
+
+            const totalInput = HISTORICAL_INPUT_COUNT + todayInput;
+            const totalCompleted = HISTORICAL_COMPLETED_COUNT + todayCompleted;
+            const rate = totalInput > 0 ? Math.round(totalCompleted * 100 / totalInput) : 0;
+            rateEl.textContent = rate + '%';
+        }
+
+        function showDamagePopup(damage, monsterDefeated) {
+            document.getElementById('damageDealtAmount').textContent = damage;
+            document.getElementById('monsterJustDefeatedMsg').style.display = monsterDefeated ? 'block' : 'none';
+            const popup = document.getElementById('damagePopup');
+            popup.style.opacity = '1'; // ★closeDamagePopup()がopacity:0を残したままdisplay:noneにするため、
+            popup.style.display = 'flex'; // 2回目以降の表示前に必ず不透明へ戻しておかないと透明なまま出てしまう
+        }
+
+        function showLevelUpPopup(newLevel) {
+            document.getElementById('levelUpNumber').textContent = newLevel;
+            const popup = document.getElementById('levelUpPopup');
+            popup.style.opacity = '1'; // ★同上：closeLevelUpPopup()が残すopacity:0を毎回リセットする
+            popup.style.display = 'flex';
         }
 
         function checkJournal(event) {
@@ -1053,10 +1310,35 @@
             const d = form.querySelector('[name="diaryText"]').value.trim();
             const mood = form.querySelector('[name="moodScore"]:checked');
 
-            if (a || g1 || g2 || g3 || d || mood) return true;
             event.preventDefault();
+            if (a || g1 || g2 || g3 || d || mood) {
+                openConfirmSubmitPopup(form);
+                return false;
+            }
             document.getElementById('journalErrorText').style.display = 'flex';
             return false;
+        }
+
+        // ★登録すると変更・削除できない今日のアクション／夜のジャーナルの、送信前の最終確認ポップ
+        let pendingSubmitForm = null;
+
+        function openConfirmSubmitPopup(form) {
+            pendingSubmitForm = form;
+            document.getElementById('confirmSubmitPopup').style.display = 'flex';
+        }
+
+        function closeConfirmSubmitPopup() {
+            document.getElementById('confirmSubmitPopup').style.display = 'none';
+            pendingSubmitForm = null;
+        }
+
+        function confirmPendingSubmit() {
+            if (pendingSubmitForm) {
+                document.getElementById('confirmSubmitPopup').style.display = 'none';
+                const formToSubmit = pendingSubmitForm;
+                pendingSubmitForm = null;
+                formToSubmit.submit();
+            }
         }
 
         // --- 6. プッシュ通知（Service Worker登録・購読） ---
@@ -1123,6 +1405,7 @@
         renderChart();
         renderMoodChart();
         restoreLastTab();
+        restoreTaskDrafts();
         reportPushStatus();
 
     </script>

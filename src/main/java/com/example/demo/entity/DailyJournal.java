@@ -35,6 +35,8 @@ public class DailyJournal {
 
     private String photoFilename; // 自由記述に添付した写真（uploads/journal-photos/配下のファイル名）
 
+    private String weather; // 今日の天気（任意）："SUNNY" / "CLOUDY" / "RAINY"
+
 // データの出し入れ口（ゲッターとセッター）
     public UserAccount getUserAccount() { return userAccount; }
     public void setUserAccount(UserAccount userAccount) { this.userAccount = userAccount; }
@@ -53,6 +55,8 @@ public class DailyJournal {
     public void setMoodScore(int moodScore) { this.moodScore = moodScore; }
     public String getPhotoFilename() { return photoFilename; }
     public void setPhotoFilename(String photoFilename) { this.photoFilename = photoFilename; }
+    public String getWeather() { return weather; }
+    public void setWeather(String weather) { this.weather = weather; }
     public Long getId() { return id; }
     public LocalDate getDate() { return date; }
 }

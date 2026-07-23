@@ -131,4 +131,17 @@ public class UserAccount {
     public void setLeagueTier(int leagueTier) { this.leagueTier = leagueTier; }
     public int getWeeklyExpSnapshot() { return weeklyExpSnapshot; }
     public void setWeeklyExpSnapshot(int weeklyExpSnapshot) { this.weeklyExpSnapshot = weeklyExpSnapshot; }
+
+    // ★追加：モンスターバトルの体数（1体目=HP3、以降撃破するたびにHPが2倍になる）と、
+    // 現在の体に対する累積ダメージ（日をまたいで持ち越す。撃破すると次の体に繰り越して0にリセット）
+    @Column(nullable = false)
+    private int monsterTier = 1;
+
+    @Column(nullable = false)
+    private int monsterDamageAccumulated = 0;
+
+    public int getMonsterTier() { return monsterTier; }
+    public void setMonsterTier(int monsterTier) { this.monsterTier = monsterTier; }
+    public int getMonsterDamageAccumulated() { return monsterDamageAccumulated; }
+    public void setMonsterDamageAccumulated(int monsterDamageAccumulated) { this.monsterDamageAccumulated = monsterDamageAccumulated; }
 }

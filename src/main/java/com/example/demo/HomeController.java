@@ -22,13 +22,16 @@ import com.example.demo.repository.ThemeOptionRepository;
 import com.example.demo.repository.UserAccountRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.imageio.ImageIO;
@@ -65,13 +68,13 @@ public class HomeController {
     @Autowired private FriendshipRepository friendshipRepository;
     @Autowired private CheerRepository cheerRepository;
     @Autowired private LeagueService leagueService;
+    @Autowired private JournalGrowthInsightService journalGrowthInsightService;
 
     @GetMapping("/")
     public String home(Model model, Principal principal,
                        @RequestParam(name = "loginSuccess", required = false) String loginSuccess,
                        @RequestParam(name = "error", required = false) String error,
                        @RequestParam(name = "notAdmin", required = false) String notAdmin,
-                       @RequestParam(name = "damage", required = false) Integer damage,
                        @RequestParam(name = "levelUp", required = false) Integer levelUpParam) {
 
         UserAccount currentUser = userRepository.findByUsername(principal.getName());
@@ -152,7 +155,6 @@ public class HomeController {
         model.addAttribute("isAdmin", "ADMIN".equals(currentUser.getRole()));
         model.addAttribute("identityDeclaration", currentUser.getIdentityDeclaration());
         model.addAttribute("userEmail", currentUser.getEmail());
-        model.addAttribute("damageDealt", damage);
         // ★レベルアップ演出：ログインボーナスでの昇格を優先し、なければ各アクションのリダイレクトパラメータを見る
         model.addAttribute("levelUpTo", loginBonusLevelUp != null ? loginBonusLevelUp : levelUpParam);
 
@@ -180,16 +182,42 @@ public class HomeController {
         }
         model.addAttribute("cumulativeDays", cumulativeDays);
 
-        // --- ★達成率：入力したTODOのうち実際に完了できた割合 ---
-        int todoInputCount = 0;
-        int todoCompletedCount = 0;
-        for (DailyTask t : myTasks) {
-            if (t.getTask1() != null && !t.getTask1().isBlank()) { todoInputCount++; if (t.isTask1Done()) todoCompletedCount++; }
-            if (t.getTask2() != null && !t.getTask2().isBlank()) { todoInputCount++; if (t.isTask2Done()) todoCompletedCount++; }
-            if (t.getTask3() != null && !t.getTask3().isBlank()) { todoInputCount++; if (t.isTask3Done()) todoCompletedCount++; }
-        }
-        int achievementRate = todoInputCount > 0 ? (int) Math.round(todoCompletedCount * 100.0 / todoInputCount) : 0;
-        model.addAttribute("achievementRate", achievementRate);
+        // ★今日のアクション入力欄の下書き（未チェックのまま入力した文字列）をブラウザのlocalStorageに
+        // 日付付きキーで保存させるために、日付をそのままJSへ渡しておく
+        model.addAttribute("todayIso", today.toString());
+
+        // ★今日のタスク状態を先に取得しておく（達成率・taskForm表示の両方で使うため）
+        Optional<DailyTask> todayTaskOpt = taskRepository.findByUserAccountAndDate(currentUser, today);
+        DailyTask todayTask = todayTaskOpt.orElse(null);
+        Optional<DailyJournal> todayJournalOpt = journalRepository.findByUserAccountAndDate(currentUser, today);
+        DailyJournal todayJournal = todayJournalOpt.orElse(null);
+        model.addAttribute("isJournalDoneToday", todayJournalOpt.isPresent());
+
+        // ★各項目はチェックした瞬間に個別ロックされる仕様のため、既に完了した項目はその日の保存済みテキストを、
+        // まだの項目は編集できるよう固定習慣のプレースホルダーを表示用に組み立てる（永続化はしない使い捨てオブジェクト）
+        DailyTask taskForm = new DailyTask();
+        boolean task1DoneToday = todayTask != null && todayTask.isTask1Done();
+        boolean task2DoneToday = todayTask != null && todayTask.isTask2Done();
+        boolean task3DoneToday = todayTask != null && todayTask.isTask3Done();
+        boolean badHabitDoneToday = todayTask != null && todayTask.isBadHabitDone();
+        taskForm.setTask1Done(task1DoneToday);
+        taskForm.setTask1(task1DoneToday ? todayTask.getTask1() : currentUser.getFixedHabit1());
+        taskForm.setTask2Done(task2DoneToday);
+        taskForm.setTask2(task2DoneToday ? todayTask.getTask2() : currentUser.getFixedHabit2());
+        taskForm.setTask3Done(task3DoneToday);
+        taskForm.setTask3(task3DoneToday ? todayTask.getTask3() : currentUser.getFixedHabit3());
+        taskForm.setBadHabitDone(badHabitDoneToday);
+        taskForm.setBadHabit(badHabitDoneToday ? todayTask.getBadHabit() : currentUser.getFixedBadHabit());
+        model.addAttribute("taskForm", taskForm);
+
+        // --- ★達成率：これまで入力されたアクション数のうち、実際にチェックできた割合を日をまたいで累積
+        // （防衛クエストは対象外）。チェックが1つも入っていない状態（入力数0）は0%とする ---
+        model.addAttribute("achievementRate", computeAchievementRate(currentUser, myTasks, todayTask, today));
+        // ★今日の分はブラウザ側で画面の実際の入力内容を見て正確に数え、この過去分に上乗せする
+        // （サーバー側は今日まだ未チェックの自由入力テキストを知る手段がないため）
+        int[] historicalCounts = computeHistoricalAchievementCounts(myTasks, today);
+        model.addAttribute("historicalInputCount", historicalCounts[0]);
+        model.addAttribute("historicalCompletedCount", historicalCounts[1]);
 
         // --- 実績（バッジ）：DB管理の定義を条件判定。獲得済み一覧と、未獲得も含む進捗一覧の両方を用意 ---
         int taskCompleteTotal = myTasks.stream().mapToInt(this::countDone).sum();
@@ -224,19 +252,12 @@ public class HomeController {
         model.addAttribute("moodTrendLabels", moodLabels);
         model.addAttribute("moodTrendValues", computeMoodTrend(myJournals, today));
 
-        Optional<DailyTask> todayTaskOpt = taskRepository.findByUserAccountAndDate(currentUser, today);
-        Optional<DailyJournal> todayJournalOpt = journalRepository.findByUserAccountAndDate(currentUser, today);
-        model.addAttribute("isTaskDoneToday", todayTaskOpt.isPresent());
-        model.addAttribute("isJournalDoneToday", todayJournalOpt.isPresent());
-
-        // --- ★モンスター戦闘演出：今日のTODO達成状況をモンスターのHPに反映 ---
-        addMonsterState(model, todayTaskOpt);
+        // --- ★モンスター戦闘演出：撃破した体数に応じてHPが倍増していく累積ダメージをモデルに反映 ---
+        addMonsterState(model, currentUser);
 
         // --- ★デイリー／ウィークリークエスト ---
         List<DailyTask> tasksThisWeek = myTasks.stream().filter(t -> !t.getDate().isBefore(mondayOfThisWeek)).collect(Collectors.toList());
         List<DailyJournal> journalsThisWeek = myJournals.stream().filter(j -> !j.getDate().isBefore(mondayOfThisWeek)).collect(Collectors.toList());
-        DailyTask todayTask = todayTaskOpt.orElse(null);
-        DailyJournal todayJournal = todayJournalOpt.orElse(null);
 
         List<QuestProgressView> dailyQuests = buildQuestViews(Quest.Period.DAILY, currentUser, today.toString(),
                 todayTask, todayJournal, tasksThisWeek, journalsThisWeek, streak);
@@ -252,15 +273,11 @@ public class HomeController {
 
         model.addAttribute("journalForm", new DailyJournal());
 
-        DailyTask taskForm = new DailyTask();
-        taskForm.setTask1(currentUser.getFixedHabit1());
-        taskForm.setTask2(currentUser.getFixedHabit2());
-        taskForm.setTask3(currentUser.getFixedHabit3());
-        taskForm.setBadHabit(currentUser.getFixedBadHabit());
-        model.addAttribute("taskForm", taskForm);
-
         model.addAttribute("journals", myJournals);
         model.addAttribute("tasks", myTasks);
+
+        // ★AIジャーナル成長分析：直近30日分の記録から前向きなコメントを生成（1日1回だけキャッシュ）
+        model.addAttribute("growthInsight", journalGrowthInsightService.getOrGenerate(currentUser, today));
 
         Map<String, Integer> activityMap = new HashMap<>();
         for (LoginRecord r : myLoginRecords) {
@@ -422,38 +439,165 @@ public class HomeController {
         return levelUpQuery != null ? "redirect:/?" + levelUpQuery : "redirect:/";
     }
 
-    @PostMapping("/saveTask")
-    public String saveTask(@ModelAttribute DailyTask taskForm, Principal principal) {
+    // ★チェックを入れた瞬間にダメージ・EXPが確定する1項目単位のAPI。一度チェックした項目は
+    // ロックされ、以後同じ項目を再度この経路で完了させることはできない（EXP/ボスダメージの整合性を守るため、
+    // 過去回のセッションで「保存後は変更・削除できない」方針にした流れと同じ考え方）。
+    public static class TaskItemRequest {
+        public String slot; // "task1" | "task2" | "task3" | "badHabit"
+        public String text;
+    }
+
+    private static final Set<String> TASK_ITEM_SLOTS = Set.of("task1", "task2", "task3", "badHabit");
+
+    @PostMapping("/toggleTaskItem")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> toggleTaskItem(
+            @RequestBody TaskItemRequest req, Principal principal) {
         UserAccount currentUser = userRepository.findByUsername(principal.getName());
         LocalDate today = LocalDate.now();
-        if (taskRepository.findByUserAccountAndDate(currentUser, today).isPresent()) return "redirect:/";
+        String text = req.text == null ? "" : req.text.trim();
 
-        int earnedExp = 0;
-        if (taskForm.getTask1() != null && !taskForm.getTask1().trim().isEmpty() && taskForm.isTask1Done()) earnedExp += 1;
-        if (taskForm.getTask2() != null && !taskForm.getTask2().trim().isEmpty() && taskForm.isTask2Done()) earnedExp += 1;
-        if (taskForm.getTask3() != null && !taskForm.getTask3().trim().isEmpty() && taskForm.isTask3Done()) earnedExp += 1;
-        if (taskForm.getBadHabit() != null && !taskForm.getBadHabit().trim().isEmpty() && taskForm.isBadHabitDone()) earnedExp += 1;
+        if (req.slot == null || !TASK_ITEM_SLOTS.contains(req.slot) || text.isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
 
-        if (earnedExp == 0) return "redirect:/?error=taskEmpty";
+        DailyTask task = taskRepository.findByUserAccountAndDate(currentUser, today).orElseGet(() -> {
+            DailyTask t = new DailyTask();
+            t.setUserAccount(currentUser);
+            t.setDate(today);
+            return t;
+        });
 
-        // ★ボスへのダメージ＝達成したTODOの数（1つにつき1ダメージ）
-        int damage = 0;
-        if (taskForm.getTask1() != null && !taskForm.getTask1().trim().isEmpty() && taskForm.isTask1Done()) damage++;
-        if (taskForm.getTask2() != null && !taskForm.getTask2().trim().isEmpty() && taskForm.isTask2Done()) damage++;
-        if (taskForm.getTask3() != null && !taskForm.getTask3().trim().isEmpty() && taskForm.isTask3Done()) damage++;
+        boolean alreadyDone = switch (req.slot) {
+            case "task1" -> task.isTask1Done();
+            case "task2" -> task.isTask2Done();
+            case "task3" -> task.isTask3Done();
+            default -> task.isBadHabitDone();
+        };
+        if (alreadyDone) {
+            return ResponseEntity.status(409).build(); // 既にロック済みの項目への再チェック要求
+        }
+
+        switch (req.slot) {
+            case "task1" -> { task.setTask1(text); task.setTask1Done(true); }
+            case "task2" -> { task.setTask2(text); task.setTask2Done(true); }
+            case "task3" -> { task.setTask3(text); task.setTask3Done(true); }
+            default -> { task.setBadHabit(text); task.setBadHabitDone(true); }
+        }
+
+        // ★達成率の分母（inputCount）をこのタイミングで確定・上書きしておく。「固定習慣の非空数」と
+        // 「現時点でのチェック済み数」の大きい方を採用することで、固定習慣が無い項目に自由入力して
+        // チェックした場合でも分母がチェック数を下回らないようにする。日が変わって過去日として
+        // 集計される時も、この値がそのまま「その日は何個入力欄があったか」の記録として残る
+        int completedSoFar = (task.isTask1Done() ? 1 : 0) + (task.isTask2Done() ? 1 : 0) + (task.isTask3Done() ? 1 : 0);
+        int fixedHabitCount = 0;
+        if (currentUser.getFixedHabit1() != null && !currentUser.getFixedHabit1().isBlank()) fixedHabitCount++;
+        if (currentUser.getFixedHabit2() != null && !currentUser.getFixedHabit2().isBlank()) fixedHabitCount++;
+        if (currentUser.getFixedHabit3() != null && !currentUser.getFixedHabit3().isBlank()) fixedHabitCount++;
+        task.setInputCount(Math.max(fixedHabitCount, completedSoFar));
+
+        taskRepository.save(task);
 
         int levelBefore = levelOf(currentUser.getExp());
-        currentUser.setExp(currentUser.getExp() + earnedExp);
+        currentUser.setExp(currentUser.getExp() + 1);
         int levelAfter = levelOf(currentUser.getExp());
-        userRepository.save(currentUser);
-        taskForm.setDate(today);
-        taskForm.setUserAccount(currentUser);
-        taskRepository.save(taskForm);
 
-        List<String> params = new ArrayList<>();
-        if (damage > 0) params.add("damage=" + damage);
-        if (levelAfter > levelBefore) params.add("levelUp=" + levelAfter);
-        return params.isEmpty() ? "redirect:/" : "redirect:/?" + String.join("&", params);
+        // ★防御（やらない事）はボスへのダメージ対象外。TODO（task1〜3）のみ1ダメージ
+        boolean isDamagingSlot = !"badHabit".equals(req.slot);
+        int damage = isDamagingSlot ? 1 : 0;
+        boolean monsterDefeated = false;
+        if (isDamagingSlot) {
+            int accumulated = currentUser.getMonsterDamageAccumulated() + 1;
+            int monsterTier = currentUser.getMonsterTier();
+            while (accumulated >= monsterHpMaxForTier(monsterTier)) {
+                accumulated -= (int) monsterHpMaxForTier(monsterTier);
+                monsterTier++;
+                monsterDefeated = true;
+            }
+            currentUser.setMonsterTier(monsterTier);
+            currentUser.setMonsterDamageAccumulated(accumulated);
+        }
+        userRepository.save(currentUser);
+
+        long hpMax = monsterHpMaxForTier(currentUser.getMonsterTier());
+        long hpCurrent = Math.max(0, hpMax - currentUser.getMonsterDamageAccumulated());
+        LevelingUtil.LevelInfo levelInfo = LevelingUtil.compute(currentUser.getExp());
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("damage", damage);
+        body.put("monsterDefeated", monsterDefeated);
+        body.put("monsterTier", currentUser.getMonsterTier());
+        body.put("monsterSprite", MONSTER_SPRITES[(currentUser.getMonsterTier() - 1) % MONSTER_SPRITES.length]);
+        body.put("monsterHpMax", hpMax);
+        body.put("monsterHpCurrent", hpCurrent);
+        body.put("monsterHpPercent", (int) Math.round(hpCurrent * 100.0 / hpMax));
+        body.put("levelUp", levelAfter > levelBefore ? levelAfter : null);
+        body.put("level", levelInfo.level());
+        body.put("expProgress", levelInfo.expIntoLevel());
+        body.put("expRequired", levelInfo.expRequiredForLevel());
+        body.put("expProgressPercent", levelInfo.progressPercent());
+        // ★達成率は返さない：今日の分はクライアント側が画面の実際の入力内容（自由入力の下書きも含む）を
+        // 見て正確に計算し、ページ読み込み時に渡しておいた過去分の累計に上乗せする
+        return ResponseEntity.ok(body);
+    }
+
+    // ★達成率＝これまで入力されてきたTODO（task1〜3、防衛クエストは対象外）のうち、実際にチェックできた
+    // 割合を日をまたいで累積していく（1日目は0%からスタートし、2日目以降も積み上がっていく）。
+    // 過去の日については「toggleTaskItemで保存された時点で既にチェック済み」なので入力数=チェック数だが、
+    // 万が一チェックせず未完了のまま残ったレコード（旧saveTask時代の一括保存分など）もそのまま正しく数えられる。
+    // 今日の分だけは、まだ未チェックでもDBに保存されない（固定習慣のプレースホルダー止まり）ため、
+    // 別枠でtodayTask＋固定習慣を見て「今日時点で入力されている項目数」を数える。
+    // ★達成率の「今日を除く過去分」の集計だけを行う。今日の分をここに含めないのは、
+    // サーバー側は今日まだチェックしていない項目に何が入力途中か（固定習慣と違うカスタムな
+    // 自由入力など）を知る手段がなく、正確に数えられないため。今日の分はブラウザ側で
+    // 実際に画面に入力されている内容を見て数え、この過去分の数字に上乗せする
+    // （index.htmlのupdateAchievementRateDisplay()を参照）。
+    private int[] computeHistoricalAchievementCounts(List<DailyTask> myTasks, LocalDate today) {
+        int inputCount = 0;
+        int completedCount = 0;
+        for (DailyTask t : myTasks) {
+            if (t.getDate().equals(today)) continue;
+            int rowCompleted = (t.isTask1Done() ? 1 : 0) + (t.isTask2Done() ? 1 : 0) + (t.isTask3Done() ? 1 : 0);
+            int rowInput;
+            if (t.getInputCount() != null) {
+                // ★inputCountが記録済みのレコード（この機能追加以降にチェックが発生した日）はそのまま使う。
+                // これにより「3つ入力欄があったのに1つしかチェックしなかった」という事実が、日をまたいだ後も
+                // 分母から消えずに残る（未チェックの項目自体はDBに一切保存されないため、これが無いと復元できない）
+                rowInput = t.getInputCount();
+            } else {
+                // ★この機能を追加する前の過去データ用フォールバック：非空フィールド数で代用
+                rowInput = 0;
+                if (t.getTask1() != null && !t.getTask1().isBlank()) rowInput++;
+                if (t.getTask2() != null && !t.getTask2().isBlank()) rowInput++;
+                if (t.getTask3() != null && !t.getTask3().isBlank()) rowInput++;
+            }
+            inputCount += rowInput;
+            completedCount += rowCompleted;
+        }
+        return new int[]{inputCount, completedCount};
+    }
+
+    // ★達成率の初期表示（JS無効時やページの初回レンダリング用）のフォールバック計算。
+    // 今日の分は、今日まだ1つもチェックしていない（todayTaskがまだ存在しない）うちは
+    // 固定習慣のプレースホルダーを分母に加えない（日をまたいだ直後に前日の達成率が
+    // 本人操作なしで下がって見えるのを防ぐため）。実際の画面表示はJS側のライブ計算で
+    // 上書きされる（カスタムな自由入力もそちらでは正しく拾える）。
+    private int computeAchievementRate(UserAccount user, List<DailyTask> myTasks, DailyTask todayTask, LocalDate today) {
+        int[] historical = computeHistoricalAchievementCounts(myTasks, today);
+        int inputCount = historical[0];
+        int completedCount = historical[1];
+        if (todayTask != null) {
+            boolean t1Done = todayTask.isTask1Done();
+            String t1 = t1Done ? todayTask.getTask1() : user.getFixedHabit1();
+            if (t1 != null && !t1.isBlank()) { inputCount++; if (t1Done) completedCount++; }
+            boolean t2Done = todayTask.isTask2Done();
+            String t2 = t2Done ? todayTask.getTask2() : user.getFixedHabit2();
+            if (t2 != null && !t2.isBlank()) { inputCount++; if (t2Done) completedCount++; }
+            boolean t3Done = todayTask.isTask3Done();
+            String t3 = t3Done ? todayTask.getTask3() : user.getFixedHabit3();
+            if (t3 != null && !t3.isBlank()) { inputCount++; if (t3Done) completedCount++; }
+        }
+        return inputCount > 0 ? (int) Math.round(completedCount * 100.0 / inputCount) : 0;
     }
 
     @PostMapping("/claimQuest/{id}")
@@ -496,36 +640,10 @@ public class HomeController {
         return "redirect:/";
     }
 
-    @PostMapping("/deleteJournal/{id}")
-    public String deleteJournal(@PathVariable Long id, Principal principal) {
-        UserAccount currentUser = userRepository.findByUsername(principal.getName());
-        journalRepository.findById(id).ifPresent(journal -> {
-            if (journal.getUserAccount() != null && journal.getUserAccount().getId().equals(currentUser.getId())) {
-                if (journal.getPhotoFilename() != null) {
-                    try {
-                        Files.deleteIfExists(JOURNAL_PHOTO_DIR.resolve(journal.getPhotoFilename()));
-                    } catch (IOException ignored) {
-                        // 削除に失敗してもレコード自体の削除は続行する（孤立ファイルはディスク上に残るのみ）
-                    }
-                }
-                journalRepository.deleteById(id);
-            }
-        });
-        return "redirect:/";
-    }
-
-    @PostMapping("/deleteTask/{id}")
-    public String deleteTask(@PathVariable Long id, Principal principal) {
-        UserAccount currentUser = userRepository.findByUsername(principal.getName());
-        taskRepository.findById(id).ifPresent(task -> {
-            if (task.getUserAccount() != null && task.getUserAccount().getId().equals(currentUser.getId())) {
-                taskRepository.deleteById(id);
-            }
-        });
-        return "redirect:/";
-    }
-
     // ============================ ここから内部ヘルパー ============================
+    // ★アクション・ジャーナルの削除機能は廃止した（EXPやボスへの累積ダメージは記録削除後も
+    // 取り消されず、履歴の件数を見て判定するクエスト・実績の進捗と食い違ってしまうため）。
+    // 代わりに保存前に確認ポップアップを出し、登録内容は事後に変更できない前提にしている。
 
     private int levelOf(int exp) {
         return LevelingUtil.levelOf(exp);
@@ -577,23 +695,28 @@ public class HomeController {
         return null;
     }
 
-    // 今日のTODO達成状況をモンスターのHPとして model に積む
-    // ★ボスのHPは常に3固定。3つ全て達成したときだけ撃破できる（入力数に関わらない）
-    private void addMonsterState(Model model, Optional<DailyTask> todayTaskOpt) {
-        int monsterHpMax = 3;
-        int done = 0;
-        if (todayTaskOpt.isPresent()) {
-            DailyTask t = todayTaskOpt.get();
-            if (t.getTask1() != null && !t.getTask1().trim().isEmpty() && t.isTask1Done()) done++;
-            if (t.getTask2() != null && !t.getTask2().trim().isEmpty() && t.isTask2Done()) done++;
-            if (t.getTask3() != null && !t.getTask3().trim().isEmpty() && t.isTask3Done()) done++;
-        }
-        int monsterHpCurrent = Math.max(0, monsterHpMax - done);
-        boolean monsterDefeated = done >= monsterHpMax;
+    // ★見た目を3種類ループさせる（1体目=👹, 2体目=👺, 3体目=🐉, 4体目=👹, ...）
+    private static final String[] MONSTER_SPRITES = {"👹", "👺", "🐉"};
+
+    // ★モンスターのHPを model に積む。1体目はHP3、撃破するたびに次の体はHPが2倍になっていく。
+    // ダメージは日をまたいで累積し（toggleTaskItemで加算・撃破判定済み）、ここでは現在の体の状態を表示するだけ
+    private void addMonsterState(Model model, UserAccount currentUser) {
+        int monsterTier = currentUser.getMonsterTier();
+        long monsterHpMax = monsterHpMaxForTier(monsterTier);
+        int accumulated = currentUser.getMonsterDamageAccumulated();
+        long monsterHpCurrent = Math.max(0, monsterHpMax - accumulated);
+        boolean monsterDefeated = accumulated >= monsterHpMax;
+        model.addAttribute("monsterTier", monsterTier);
+        model.addAttribute("monsterSprite", MONSTER_SPRITES[(monsterTier - 1) % MONSTER_SPRITES.length]);
         model.addAttribute("monsterHpMax", monsterHpMax);
         model.addAttribute("monsterHpCurrent", monsterHpCurrent);
         model.addAttribute("monsterHpPercent", (int) Math.round(monsterHpCurrent * 100.0 / monsterHpMax));
         model.addAttribute("monsterDefeated", monsterDefeated);
+    }
+
+    // ★n体目のモンスターのHP = 3 * 2^(n-1)（1体目=3, 2体目=6, 3体目=12, ...）
+    private static long monsterHpMaxForTier(int tier) {
+        return 3L << (tier - 1);
     }
 
     private List<QuestProgressView> buildQuestViews(Quest.Period period, UserAccount currentUser, String periodKey,

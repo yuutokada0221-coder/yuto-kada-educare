@@ -170,6 +170,18 @@ a { color: var(--secondary); }
     color: var(--text-muted);
 }
 .icon-badge .icon { width: 16px; height: 16px; vertical-align: 0; }
+
+/* 各項目見出しの横に置く、その場で使い方を開ける小さな？ボタン */
+.help-icon-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 20px; height: 20px; margin-left: 4px;
+    border: 1px solid var(--border); border-radius: 50%;
+    background: var(--surface-2); color: var(--text-muted);
+    cursor: pointer; padding: 0; flex-shrink: 0;
+    transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+.help-icon-btn .icon { width: 12px; height: 12px; }
+.help-icon-btn:hover { background: var(--surface-3); border-color: var(--accent); color: var(--accent); }
 .icon-badge.tint-primary { background: var(--primary-tint); color: var(--primary-dark); }
 .icon-badge.tint-secondary { background: var(--secondary-tint); color: var(--secondary-dark); }
 .icon-badge.tint-gold { background: var(--gold-tint); color: var(--gold-dark); }
@@ -206,6 +218,10 @@ a { color: var(--secondary); }
 }
 .app-header h1 .icon { color: var(--accent); }
 .app-nav-links { display: flex; gap: var(--space-2); align-items: center; }
+/* ★狭い画面だとボタンが横幅不足で縮められ、文字が折り返して高さがバラバラになっていたため、
+   ヘッダーのボタン類は常に1行で表示し（縮めない）、幅が足りない時は行自体を横スクロールさせる */
+.app-nav-links > * { flex-shrink: 0; }
+.app-nav-links a.nav-btn, .app-nav-links button { white-space: nowrap; }
 .app-nav-links a.nav-btn {
     color: var(--text-body); background: var(--surface-2); font-weight: 600; text-decoration: none; font-size: var(--text-sm);
     padding: 8px var(--space-3); border-radius: var(--radius-sm);
@@ -215,9 +231,20 @@ a { color: var(--secondary); }
 }
 .app-nav-links a.nav-btn:hover { background: var(--surface-3); border-color: var(--border-strong); }
 
+/* ★設定タブのボタンはヘッダーでは使い方・ログアウトと全く同じbtn-duo btn-outline btn-smの見た目にしたいが、
+   switchTab()のJSがclass="tab-btn settings"で要素を探す都合上tab-btnクラス自体は残す必要があり、
+   その.tab-btnが持つflex:1（タブバー内で幅を伸ばす指定）だけがヘッダーでは不要なので打ち消す */
+.app-nav-links .tab-btn.settings { flex: none; }
+
 .container { max-width: 1120px; margin: var(--space-6) auto; padding: 0 var(--space-4); }
 .main-layout { display: grid; grid-template-columns: 320px 1fr; gap: var(--space-5); align-items: start; }
 @media (max-width: 768px) { .main-layout { grid-template-columns: 1fr; } }
+@media (max-width: 640px) {
+    /* ★スマホ幅ではタイトルとボタン列が横並びだと窮屈になり折り返しの原因になるため、
+       タイトルを上、ボタン列を下の2段にして、ボタン列側は必要なら横スクロールできるようにする */
+    .app-header .header-content { flex-direction: column; align-items: flex-start; gap: var(--space-2); }
+    .app-nav-links { width: 100%; overflow-x: auto; padding-bottom: 2px; }
+}
 
 /* ---------------- カード ---------------- */
 .card-duo {
@@ -348,6 +375,12 @@ input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary)
 .star-picker input:checked ~ label .icon { color: var(--gold); }
 .star-picker label:hover .icon,
 .star-picker label:hover ~ label .icon { color: var(--gold); }
+
+.weather-picker { display: inline-flex; gap: 6px; margin: 8px 0 4px; vertical-align: middle; }
+.weather-picker input { display: none; }
+.weather-picker label { font-size: 1.3em; line-height: 1; padding: 5px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border); cursor: pointer; opacity: 0.45; transition: opacity 0.12s, border-color 0.12s, background 0.12s; }
+.weather-picker input:checked + label { opacity: 1; border-color: var(--accent); background: var(--surface-2); }
+.weather-picker label:hover { opacity: 0.8; }
 
 /* ---------------- モンスター戦闘 ---------------- */
 .monster-arena { text-align: center; padding: var(--space-3) 0 var(--space-1); }
