@@ -100,7 +100,7 @@
         <dependency>
             <groupId>org.bouncycastle</groupId>
             <artifactId>bcprov-jdk18on</artifactId>
-            <version>1.78.1</version>
+            <version>1.85</version>
         </dependency>
         <!-- ★DBスキーマのバージョン管理（ddl-auto=updateからの移行）。Flyway 10+はDB種別ごとに
              アーティファクトが分かれているため、Postgres用を明示的に追加する必要がある -->
