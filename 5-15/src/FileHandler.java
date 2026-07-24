@@ -1,38 +1,30 @@
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
+import java.sql.SQLException;
 import java.util.List;
 
 public class FileHandler {
-    public int importFromCSV(String filename, WordManager wordManager) {
+    
+    public void exportToCSV(List<Word> words, String filename) throws IOException {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(filename))) {
+            for (Word word : words) {
+                writer.write(word.getEnglish() + "," + word.getJapanese());
+                writer.newLine();
+            }
+        }
+    }
+
+    public int importFromCSV(String filename, WordManager wordManager) throws IOException, SQLException {
         int count = 0;
-        try (BufferedReader br = new BufferedReader(new FileReader(filename))) {
+        try (BufferedReader reader = new BufferedReader(new FileReader(filename))) {
             String line;
-            while ((line = br.readLine()) != null) {
+            while ((line = reader.readLine()) != null) {
                 String[] parts = line.split(",");
-                if (parts.length == 2) {
-                    wordManager.addWord(new Word(parts[0].trim(), parts[1].trim()));
+                if (parts.length >= 2) {
+                    Word word = new Word(parts[0].trim(), parts[1].trim());
+                    wordManager.addWord(word);
                     count++;
                 }
             }
-        } catch (IOException e) {
-            System.out.println("エラーが発生しました: " + e.getMessage());
-        }
-        return count;
-    }
-
-    public int exportToCSV(List<Word> words, String filename) {
-        int count = 0;
-        try (BufferedWriter bw = new BufferedWriter(new FileWriter(filename))) {
-            for (Word word : words) {
-                bw.write(word.getEnglish() + "," + word.getJapanese());
-                bw.newLine();
-                count++;
-            }
-        } catch (IOException e) {
-            System.out.println("エラーが発生しました: " + e.getMessage());
         }
         return count;
     }

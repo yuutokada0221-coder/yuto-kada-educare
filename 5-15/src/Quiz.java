@@ -1,3 +1,4 @@
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Random;
 
@@ -8,20 +9,17 @@ public class Quiz {
 
     public Quiz(WordManager wordManager) {
         this.wordManager = wordManager;
-        this.score = 0;
-        this.totalQuestions = 0;
     }
 
     public boolean checkAnswer(Word word, String answer) {
-        totalQuestions++;
-        if (word.getJapanese().equals(answer)) {
+        boolean isCorrect = word.getJapanese().equals(answer);
+        if (isCorrect) {
             score++;
-            return true;
         }
-        return false;
+        return isCorrect;
     }
 
-    public Word getRandomWord() {
+    public Word getRandomWord() throws SQLException {
         List<Word> words = wordManager.getWords();
         if (words.isEmpty()) {
             return null;
@@ -36,5 +34,14 @@ public class Quiz {
 
     public int getTotalQuestions() {
         return totalQuestions;
+    }
+
+    public void setTotalQuestions(int totalQuestions) {
+        this.totalQuestions = totalQuestions;
+    }
+
+    public void resetScore() {
+        this.score = 0;
+        this.totalQuestions = 0;
     }
 }

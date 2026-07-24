@@ -1,6 +1,4 @@
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -11,63 +9,58 @@ public class WordManager {
         this.dbManager = dbManager;
     }
 
-    public void addWord(Word word) {
+    public void addWord(Word word) throws SQLException {
         String sql = "INSERT INTO words (english, japanese) VALUES (?, ?)";
-        try (PreparedStatement pstmt = dbManager.getConnection().prepareStatement(sql)) {
-            pstmt.setString(1, word.getEnglish());
-            pstmt.setString(2, word.getJapanese());
-            pstmt.executeUpdate();
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
+        try (PreparedStatement stmt = dbManager.getConnection().prepareStatement(sql)) {
+            stmt.setString(1, word.getEnglish());
+            stmt.setString(2, word.getJapanese());
+            stmt.executeUpdate();
         }
     }
 
-    public List<Word> getWords() {
+    public List<Word> getWords() throws SQLException {
         List<Word> words = new ArrayList<>();
         String sql = "SELECT english, japanese FROM words";
-        try (PreparedStatement pstmt = dbManager.getConnection().prepareStatement(sql);
-             ResultSet rs = pstmt.executeQuery()) {
+        try (Statement stmt = dbManager.getConnection().createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
                 words.add(new Word(rs.getString("english"), rs.getString("japanese")));
             }
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
         }
         return words;
     }
 
-    public int getWordCount() {
+    public int getWordCount() throws SQLException {
         String sql = "SELECT COUNT(*) FROM words";
-        try (PreparedStatement pstmt = dbManager.getConnection().prepareStatement(sql);
-             ResultSet rs = pstmt.executeQuery()) {
+        try (Statement stmt = dbManager.getConnection().createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
             if (rs.next()) {
                 return rs.getInt(1);
             }
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
         }
         return 0;
     }
 
-    public void deleteWord(String english) {
+    public void deleteWord(String english) throws SQLException {
         String sql = "DELETE FROM words WHERE english = ?";
-        try (PreparedStatement pstmt = dbManager.getConnection().prepareStatement(sql)) {
-            pstmt.setString(1, english);
-            pstmt.executeUpdate();
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
+        try (PreparedStatement stmt = dbManager.getConnection().prepareStatement(sql)) {
+            stmt.setString(1, english);
+            int affectedRows = stmt.executeUpdate();
+            if (affectedRows == 0) {
+                throw new SQLException("指定された単語が見つかりませんでした。");
+            }
         }
     }
 
-    public void updateWord(String english, String newJapanese) {
+    public void updateWord(String english, String newJapanese) throws SQLException {
         String sql = "UPDATE words SET japanese = ? WHERE english = ?";
-        try (PreparedStatement pstmt = dbManager.getConnection().prepareStatement(sql)) {
-            pstmt.setString(1, newJapanese);
-            pstmt.setString(2, english);
-            pstmt.executeUpdate();
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
+        try (PreparedStatement stmt = dbManager.getConnection().prepareStatement(sql)) {
+            stmt.setString(1, newJapanese);
+            stmt.setString(2, english);
+            int affectedRows = stmt.executeUpdate();
+            if (affectedRows == 0) {
+                throw new SQLException("指定された単語が見つかりませんでした。");
+            }
         }
     }
 }
-
