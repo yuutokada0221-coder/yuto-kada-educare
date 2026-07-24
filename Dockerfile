@@ -12,4 +12,7 @@ FROM eclipse-temurin:17-jre
 WORKDIR /app
 COPY --from=build /app/target/demo-0.0.1-SNAPSHOT.jar app.jar
 EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "app.jar"]
+# ★Renderの無料プランはメモリ上限512MBしかなく、JVMのデフォルト設定のままだと
+# 起動後にヒープが膨らんでOOM Kill（exit code 137）でクラッシュを繰り返していた。
+# ヒープとメタスペースの上限を明示的に絞り、GCも小メモリ環境向けのSerialGCに変更する。
+ENTRYPOINT ["java", "-Xmx350m", "-XX:MaxMetaspaceSize=100m", "-XX:+UseSerialGC", "-jar", "app.jar"]
