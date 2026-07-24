@@ -1,0 +1,39 @@
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.List;
+
+public class FileHandler {
+    public int importFromCSV(String filename, WordManager wordManager) {
+        int count = 0;
+        try (BufferedReader br = new BufferedReader(new FileReader(filename))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                String[] parts = line.split(",");
+                if (parts.length == 2) {
+                    wordManager.addWord(new Word(parts[0].trim(), parts[1].trim()));
+                    count++;
+                }
+            }
+        } catch (IOException e) {
+            System.out.println("エラーが発生しました: " + e.getMessage());
+        }
+        return count;
+    }
+
+    public int exportToCSV(List<Word> words, String filename) {
+        int count = 0;
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(filename))) {
+            for (Word word : words) {
+                bw.write(word.getEnglish() + "," + word.getJapanese());
+                bw.newLine();
+                count++;
+            }
+        } catch (IOException e) {
+            System.out.println("エラーが発生しました: " + e.getMessage());
+        }
+        return count;
+    }
+}
