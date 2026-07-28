@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>テックカンファレンス2023</title>
+</head>
+<body>
+
+    <header>
+        <h1>テックカンファレンス2023</h1>
+        <nav>
+            <ul>
+                <li><a href="#home">ホーム</a></li>
+                <li><a href="#speaker">スピーカー</a></li>
+                <li><a href="#register">登録</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <article>
+            <h2>イベント概要</h2>
+            <p>このカンファレンスでは最新の技術トレンドを紹介します。</p>
+        </article>
+        
+        <aside>
+            <p>参加者にはオリジナルのノベルティが用意されています。</p>
+        </aside>
+
+        <table border="1">
+            <tr>
+                <th>セッション</th>
+                <th>スピーカー</th>
+                <th>時間</th>
+            </tr>
+            <tr>
+                <!-- 縦方向に2つのセルを結合 -->
+                <td rowspan="2">基調講演</td>
+                <td>Dr. Tech</td>
+                <td>10:00〜11:00</td>
+            </tr>
+            <tr>
+                <td>Dr. Mac</td>
+                <td>11:30〜12:30</td>
+            </tr>
+            <tr>
+                <td>パネルディスカッション</td>
+                <td>Dr. Tech</td>
+                <td>13:30〜14:30</td>
+            </tr>
+        </table>
+
+        <form action="/submit" method="POST">
+            名前：<input type="text" name="name"><br>
+            
+            メールアドレス：<input type="email" name="email"><br>
+            
+            性別：
+            <label><input type="radio" name="gender" value="male"> 男性</label>
+            <label><input type="radio" name="gender" value="female"> 女性</label><br>
+            
+            興味のある分野：
+            <label><input type="checkbox" name="interest" value="tech"> 技術</label>
+            <label><input type="checkbox" name="interest" value="art"> 芸術</label>
+            <label><input type="checkbox" name="interest" value="science"> 科学</label><br>
+            
+            国：
+            <select name="country">
+                <option value="japan">日本</option>
+                <option value="usa">アメリカ</option>
+                <option value="uk">イギリス</option>
+            </select><br>
+            
+            コメント：<br>
+            <textarea name="comment" rows="4" cols="50"></textarea><br>
+            
+            <input type="submit" value="送信">
+        </form>
+    </main>
+
+    <footer>
+        <p>© 2023 テックカンファレンス. All rights reserved.</p>
+    </footer>
+
+</body>
+</html>
