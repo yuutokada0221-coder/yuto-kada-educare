@@ -1,0 +1,14 @@
+.menu {
+    padding: 0;
+    margin: 0;
+    list-style-type: none; /* または list-style: none; */
+    display: flex;
+    gap: 20px;
+}
+a {
+    color: #444;
+    text-decoration: none;
+}
+.features {
+    list-style-type: circle;
+}
