@@ -3,7 +3,6 @@ body {
 }
 
 .page-header {
-
     background-image: url('https://sozaino.site/wp-content/uploads/2024/10/okumono_chess40.png');
     background-repeat: no-repeat;
     background-position: center;
@@ -21,5 +20,6 @@ h1 {
 
 img {
     max-width: 100%;
-    height: auto;
+    height: 500px; 
+
 }
