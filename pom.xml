@@ -89,7 +89,7 @@
         <dependency>
             <groupId>nl.martijndwars</groupId>
             <artifactId>web-push</artifactId>
-            <version>5.1.1</version>
+            <version>5.1.2</version>
         </dependency>
         <!-- 本番運用時の死活監視（/actuator/health）用 -->
         <dependency>
