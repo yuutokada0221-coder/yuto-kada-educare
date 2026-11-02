@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Loop</title>
+</head>
+<body>
+    <h1>Items List</h1>
+    <ul>
+        <li th:each="item : ${items}" th:text="${item}">Item</li>
+    </ul>
+</body>
+</html>
