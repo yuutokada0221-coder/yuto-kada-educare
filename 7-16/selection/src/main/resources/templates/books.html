@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>書籍一覧</title>
+</head>
+<body>
+    <h1>書籍一覧</h1>
+    <table border="1">
+        <thead>
+            <tr><th>ID</th><th>タイトル</th><th>著者</th><th>価格</th><th>在庫</th></tr>
+        </thead>
+        <tbody>
+            <!-- th:object で対象を指定し、選択変数式 *{...} で参照する -->
+            <tr th:each="b : ${books}" th:object="${b}">
+                <td th:text="*{id}"></td>
+                <td th:text="*{title}"></td>
+                <td th:text="*{author}"></td>
+                <td th:text="'¥' + *{price}"></td>
+                <td>
+                    <!-- 在庫の有無を th:if / th:unless で切り替え -->
+                    <span th:if="*{stock > 0}" th:text="'在庫あり(' + *{stock} + '冊)'"></span>
+                    <span th:unless="*{stock > 0}" style="color: red;">在庫なし</span>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</body>
+</html>

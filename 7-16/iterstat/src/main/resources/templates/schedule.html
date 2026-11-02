@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>スケジュール</title>
+</head>
+<body>
+    <h1>スケジュール</h1>
+    <!-- 件数: ユーティリティオブジェクト #lists.size() -->
+    <p>件数: <span th:text="${#lists.size(schedules)}">0</span>件</p>
+    <table border="1">
+        <thead>
+            <tr><th>番号</th><th>予定</th><th>備考</th></tr>
+        </thead>
+        <tbody>
+            <!-- 繰り返しのステータス(stat)で番号・スタート/ゴール・奇数行の背景色 -->
+            <tr th:each="schedule, stat : ${schedules}"
+                th:style="${stat.odd} ? 'background-color: #eef;' : ''">
+                <td th:text="${stat.count}"></td>
+                <td th:text="${schedule}"></td>
+                <td>
+                    <span th:if="${stat.first}">スタート</span>
+                    <span th:if="${stat.last}">ゴール</span>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</body>
+</html>
