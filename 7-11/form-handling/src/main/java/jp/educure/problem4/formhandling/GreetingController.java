@@ -9,12 +9,12 @@ import org.springframework.web.bind.annotation.RequestParam;
 @Controller
 public class GreetingController {
 
-    @GetMapping("/")
+    @GetMapping("/greeting")
     public String form() {
         return "greetingForm";
     }
 
-    @PostMapping("/greet")
+    @PostMapping("/greeting")
     public String greet(@RequestParam("name") String name, Model model) {
         model.addAttribute("name", name);
         return "greetingResult";

@@ -9,7 +9,7 @@ public class UserController {
 
     @GetMapping("/user")
     public String user(Model model) {
-        model.addAttribute("userName", "John Doe");
+        model.addAttribute("username", "John Doe");
         return "user";
     }
 }

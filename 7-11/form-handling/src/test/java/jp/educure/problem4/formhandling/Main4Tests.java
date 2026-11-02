@@ -19,14 +19,14 @@ class Main4Tests {
 
     @Test
     void formIsShown() throws Exception {
-        mockMvc.perform(get("/"))
+        mockMvc.perform(get("/greeting"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("名前を入力してください")));
     }
 
     @Test
     void postShowsGreeting() throws Exception {
-        mockMvc.perform(post("/greet").param("name", "John"))
+        mockMvc.perform(post("/greeting").param("name", "John"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("こんにちは、")))
                 .andExpect(content().string(containsString("John")));
