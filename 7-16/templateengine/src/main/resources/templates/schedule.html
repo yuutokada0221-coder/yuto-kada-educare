@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>学習スケジュール</title>
+    <style>
+        .odd-row { background-color: #eeeeee; }
+    </style>
+</head>
+<body>
+    <h1>学習スケジュール</h1>
+    <table border="1">
+        <tr>
+            <th>No.</th>
+            <th>内容</th>
+            <th>備考</th>
+        </tr>
+        <tr th:each="task, stat : ${tasks}" th:class="${stat.odd} ? 'odd-row' : ''">
+            <td th:text="${stat.count}">1</td>
+            <td th:text="${task}">内容</td>
+            <td th:text="${stat.first} ? 'スタート' : (${stat.last} ? 'ゴール' : '')">備考</td>
+        </tr>
+    </table>
+    <p th:text="|全${#lists.size(tasks)}件|">全0件</p>
+</body>
+</html>

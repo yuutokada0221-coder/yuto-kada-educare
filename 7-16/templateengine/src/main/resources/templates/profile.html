@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>プロフィール</title>
+</head>
+<body>
+    <h1 th:text="|${name}さんのプロフィール|">名前さんのプロフィール</h1>
+    <p th:text="|年齢: ${age}歳 / 住所: ${city}|">年齢 / 住所</p>
+    <p>ようこそ、[[${name}]]さん！</p>
+</body>
+</html>

@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>書籍一覧</title>
+</head>
+<body>
+    <h1>書籍一覧</h1>
+    <div th:each="book : ${books}" th:object="${book}">
+        <p th:text="|タイトル: *{title}|">タイトル</p>
+        <p th:text="|著者: *{author}|">著者</p>
+        <p th:text="|価格: *{price}円|">価格</p>
+        <p th:if="*{stock > 0}" th:text="|在庫あり（残り*{stock}冊）|">在庫あり</p>
+        <p th:unless="*{stock > 0}">在庫切れ</p>
+        <hr>
+    </div>
+</body>
+</html>

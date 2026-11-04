@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>会員一覧</title>
+</head>
+<body>
+    <h1>会員一覧</h1>
+    <ul>
+        <li th:each="member : ${members}" th:switch="${member.rank}">
+            <th:block th:text="|${member.name}: |"></th:block><span th:case="'GOLD'">ゴールド会員（送料無料）</span><span th:case="'SILVER'">シルバー会員（ポイント2倍）</span><span th:case="'BRONZE'">ブロンズ会員</span><span th:case="*">一般会員</span>
+        </li>
+    </ul>
+</body>
+</html>
