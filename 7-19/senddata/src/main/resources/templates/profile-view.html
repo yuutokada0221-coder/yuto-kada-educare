@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>ユーザープロフィール</title>
+</head>
+<body>
+    <h1>ユーザープロフィール</h1>
+    <p>名前: <span th:text="${profile.name}"></span></p>
+    <p>年齢: <span th:text="${profile.age}"></span></p>
+    <p>自己紹介: <span th:text="${profile.bio}"></span></p>
+    <p th:if="${message}" th:text="${message}"></p>
+    <a th:href="@{/profile/edit(id=${profile.id})}">編集</a>
+</body>
+</html>
