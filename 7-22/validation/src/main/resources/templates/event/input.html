@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>イベント申し込み期間</title>
+</head>
+<body>
+    <h1>イベント申し込み期間</h1>
+    <form th:action="@{/event/submit}" th:object="${form}" method="post">
+        <label for="startDate">開始日:</label>
+        <input type="date" id="startDate" th:field="*{startDate}"><br>
+        <span th:if="${#fields.hasErrors('startDate')}" th:errors="*{startDate}"></span>
+        <label for="endDate">終了日:</label>
+        <input type="date" id="endDate" th:field="*{endDate}"><br>
+        <span th:if="${#fields.hasErrors('endDate')}" th:errors="*{endDate}"></span>
+        <p><button type="submit">確認</button></p>
+    </form>
+</body>
+</html>

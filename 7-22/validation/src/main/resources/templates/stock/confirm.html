@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>在庫数確認</title>
+</head>
+<body>
+    <h1>在庫数確認</h1>
+    <p th:text="|入力された在庫数: ${form.stock}|">入力された在庫数: </p>
+    <form th:action="@{/stock}" method="get">
+        <button type="submit">戻る</button>
+    </form>
+</body>
+</html>

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>割引キャンペーン登録</title>
+</head>
+<body>
+    <h1>割引キャンペーン登録</h1>
+    <form th:action="@{/campaign}" th:object="${form}" method="post">
+        <label for="name">キャンペーン名：</label>
+        <input type="text" id="name" th:field="*{name}"><br>
+        <span th:if="${#fields.hasErrors('name')}" th:errors="*{name}"></span>
+        <label for="type">割引種別：</label>
+        <select id="type" th:field="*{type}">
+            <option value="fixed">定額</option>
+            <option value="percent">定率</option>
+        </select><br>
+        <label for="value">割引値：</label>
+        <input type="text" id="value" th:field="*{value}"><br>
+        <span th:if="${#fields.hasErrors('value')}" th:errors="*{value}"></span>
+        <label for="startDate">開始日：</label>
+        <input type="date" id="startDate" th:field="*{startDate}"><br>
+        <span th:if="${#fields.hasErrors('startDate')}" th:errors="*{startDate}"></span>
+        <label for="endDate">終了日：</label>
+        <input type="date" id="endDate" th:field="*{endDate}"><br>
+        <span th:if="${#fields.hasErrors('endDate')}" th:errors="*{endDate}"></span>
+        <p><button type="submit">確認</button></p>
+    </form>
+</body>
+</html>
